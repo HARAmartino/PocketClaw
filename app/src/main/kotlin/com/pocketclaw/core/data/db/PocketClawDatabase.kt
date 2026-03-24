@@ -2,6 +2,7 @@ package com.pocketclaw.core.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.PluginTrustStoreDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
@@ -24,6 +25,7 @@ import com.pocketclaw.core.data.db.entity.WhitelistEntry
     version = 1,
     exportSchema = true,
 )
+@TypeConverters(Converters::class)
 abstract class PocketClawDatabase : RoomDatabase() {
     abstract fun taskJournalDao(): TaskJournalDao
     abstract fun timelineEntryDao(): TimelineEntryDao

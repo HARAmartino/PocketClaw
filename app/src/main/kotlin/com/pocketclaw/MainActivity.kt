@@ -8,8 +8,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.pocketclaw.ui.dashboard.DashboardScreen
+import com.pocketclaw.ui.onboarding.PermissionOnboardingScreen
+import com.pocketclaw.ui.terminal.TerminalScreen
 import com.pocketclaw.ui.theme.PocketClawTheme
 import dagger.hilt.android.AndroidEntryPoint
+
+private object Routes {
+    const val ONBOARDING = "onboarding"
+    const val DASHBOARD = "dashboard"
+    const val TERMINAL = "terminal"
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -31,9 +43,37 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PocketClawApp() {
-    // Navigation graph — onboarding → dashboard
-    // Full implementation in subsequent phases
-    com.pocketclaw.ui.onboarding.PermissionOnboardingScreen(
-        onAllPermissionsGranted = { /* navigate to Dashboard */ },
-    )
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = Routes.ONBOARDING,
+    ) {
+        composable(Routes.ONBOARDING) {
+            PermissionOnboardingScreen(
+                onAllPermissionsGranted = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable(Routes.DASHBOARD) {
+            DashboardScreen(
+                onNavigateToTerminal = {
+                    navController.navigate(Routes.TERMINAL)
+                },
+            )
+        }
+
+        composable(Routes.TERMINAL) {
+            TerminalScreen(
+                onNavigateToDashboard = {
+                    navController.navigateUp()
+                },
+            )
+        }
+    }
 }
+

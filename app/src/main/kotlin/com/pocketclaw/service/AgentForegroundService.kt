@@ -59,6 +59,9 @@ class AgentForegroundService : Service() {
     @Inject
     lateinit var orchestrator: AgentOrchestrator
 
+    @Inject
+    lateinit var serviceState: AgentServiceState
+
     private var wakeLock: PowerManager.WakeLock? = null
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
@@ -76,19 +79,27 @@ class AgentForegroundService : Service() {
             val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
                 status == android.os.BatteryManager.BATTERY_STATUS_FULL
 
+            // Publish charging state to shared service state
+            serviceState.setCharging(isCharging)
+
             // Continuous charging advisory
             if (isCharging) {
-                if (chargingStartMs == null) chargingStartMs = System.currentTimeMillis()
+                if (chargingStartMs == null) {
+                    chargingStartMs = System.currentTimeMillis()
+                    serviceState.setChargingStartMs(chargingStartMs)
+                }
                 val chargingDurationMs = System.currentTimeMillis() - (chargingStartMs ?: 0L)
                 if (chargingDurationMs > CHARGING_ADVISORY_THRESHOLD_MS) {
                     Log.i(TAG, "Continuous charging advisory: device has been charging for >2 hours.")
-                    // UI layer observes this state via StateFlow in ViewModel
                 }
             } else {
                 chargingStartMs = null
+                serviceState.setChargingStartMs(null)
             }
 
             val batteryPercent = if (scale > 0) (level * 100) / scale else -1
+            serviceState.setBattery(batteryPercent)
+            serviceState.setThermal(tempTenths)
 
             // Auto-pause conditions (Layer 5)
             if (tempTenths > TEMP_PAUSE_THRESHOLD_CELSIUS_TENTHS) {
@@ -143,6 +154,7 @@ class AgentForegroundService : Service() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PocketClaw:AgentWakeLock")
         wakeLock?.acquire()
+        serviceState.setRunning(true)
         Log.d(TAG, "WakeLock acquired.")
     }
 
@@ -153,6 +165,7 @@ class AgentForegroundService : Service() {
             Log.d(TAG, "WakeLock released.")
         }
         wakeLock = null
+        serviceState.setRunning(false)
     }
 
     /**

@@ -5,7 +5,11 @@ import androidx.room.Room
 import com.pocketclaw.agent.capability.CapabilityEnforcer
 import com.pocketclaw.agent.capability.CapabilityEnforcerImpl
 import com.pocketclaw.agent.llm.LlmOutputValidator
+import com.pocketclaw.agent.llm.PassthroughPrivacyRouter
+import com.pocketclaw.agent.llm.PrivacyRouter
+import com.pocketclaw.agent.security.HardcodedSecurityPolicy
 import com.pocketclaw.agent.security.NetworkGateway
+import com.pocketclaw.agent.security.SecurityPolicy
 import com.pocketclaw.agent.security.SuspicionScorer
 import com.pocketclaw.agent.security.SuspicionScorerImpl
 import com.pocketclaw.agent.security.TrustedInputBoundary
@@ -61,6 +65,14 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindSuspicionScorer(impl: SuspicionScorerImpl): SuspicionScorer
+
+    @Binds
+    @Singleton
+    abstract fun bindPrivacyRouter(impl: PassthroughPrivacyRouter): PrivacyRouter
+
+    @Binds
+    @Singleton
+    abstract fun bindSecurityPolicy(impl: HardcodedSecurityPolicy): SecurityPolicy
 }
 
 @Module

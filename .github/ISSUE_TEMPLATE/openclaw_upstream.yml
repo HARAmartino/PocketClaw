@@ -1,0 +1,32 @@
+name: OpenClaw/NemoClaw Upstream Update
+description: Track an upstream change that may need reflection in PocketClaw
+labels: ["upstream-tracking"]
+body:
+  - type: dropdown
+    id: source
+    label: Source project
+    options: [OpenClaw, NemoClaw, Other derivative]
+  - type: input
+    id: version
+    label: Version or commit URL
+  - type: dropdown
+    id: type
+    label: Change type
+    options:
+      - Security patch (immediate action required)
+      - New LLM provider
+      - New HITL channel
+      - Protocol/schema change
+      - Policy format update
+      - Other
+  - type: input
+    id: component
+    label: PocketClaw component affected
+    placeholder: "e.g. SuspicionScorer.kt, ActionValidatorImpl.kt"
+  - type: dropdown
+    id: priority
+    label: Priority
+    options: [Immediate (security), Next release, Optional]
+  - type: textarea
+    id: notes
+    label: Implementation notes

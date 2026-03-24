@@ -52,4 +52,27 @@
     <!-- Terminal -->
     <string name="terminal_title">Advanced Terminal</string>
     <string name="terminal_command_hint">Enter command to inject into next LLM prompt…</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_nav_back">Back</string>
+    <string name="settings_llm_section">LLM Provider</string>
+    <string name="settings_llm_provider_label">Provider</string>
+    <string name="settings_api_key_label">API Key</string>
+    <string name="settings_custom_endpoint_label">Custom Endpoint URL</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_test_connection">Test Connection</string>
+    <string name="settings_testing">Testing…</string>
+    <string name="settings_hitl_section">HITL Provider</string>
+    <string name="settings_hitl_provider_label">Provider</string>
+    <string name="settings_bot_token_label">Bot Token</string>
+    <string name="settings_chat_id_label">Telegram Chat ID</string>
+    <string name="settings_webhook_url_label">Discord Webhook URL</string>
+    <string name="settings_agent_section">Agent Behaviour</string>
+    <string name="settings_token_budget_label">Daily Token Budget: %1$d</string>
+    <string name="settings_max_iterations_label">Max Iterations: %1$d</string>
+    <string name="settings_auto_pilot_label">Auto-Pilot (bypass HITL for standard actions)</string>
+    <string name="settings_battery_section">Battery</string>
+    <string name="settings_oem_battery_button">Open OEM Battery Settings</string>
+    <string name="settings_open_settings">Settings</string>
 </resources>

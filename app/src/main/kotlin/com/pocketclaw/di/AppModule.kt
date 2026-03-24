@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pocketclaw.agent.capability.CapabilityEnforcer
 import com.pocketclaw.agent.capability.CapabilityEnforcerImpl
 import com.pocketclaw.agent.llm.LlmOutputValidator
@@ -82,6 +84,20 @@ abstract class AppModule {
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    /**
+     * Placeholder migration from schema version 1 to 2.
+     *
+     * No schema change is introduced in this version — the migration exists to
+     * establish the migration chain and prevent destructive data loss during upgrades.
+     * Actual schema changes will be added here in subsequent phases.
+     */
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // No schema change in this version.
+            // Placeholder to establish the 1 → 2 migration chain.
+        }
+    }
+
     @Provides
     @Singleton
     fun providePocketClawDatabase(
@@ -91,7 +107,7 @@ object DatabaseModule {
         PocketClawDatabase::class.java,
         "pocketclaw.db",
     )
-        .fallbackToDestructiveMigration()
+        .addMigrations(MIGRATION_1_2)
         .build()
 
     @Provides

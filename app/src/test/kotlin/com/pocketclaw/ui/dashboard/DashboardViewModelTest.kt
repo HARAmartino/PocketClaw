@@ -137,6 +137,26 @@ class DashboardViewModelTest {
         assertEquals(42, serviceState.batteryPercent.first())
     }
 
+    // ── Foreground package state ──────────────────────────────────────────────
+
+    @Test
+    fun serviceState_foregroundPackage_defaultIsNull() = runBlocking {
+        assertEquals(null, serviceState.foregroundPackage.first())
+    }
+
+    @Test
+    fun serviceState_setForegroundPackage_emitsPackageName() = runBlocking {
+        serviceState.setForegroundPackage("com.example.app")
+        assertEquals("com.example.app", serviceState.foregroundPackage.first())
+    }
+
+    @Test
+    fun serviceState_setForegroundPackage_null_emitsNull() = runBlocking {
+        serviceState.setForegroundPackage("com.example.app")
+        serviceState.setForegroundPackage(null)
+        assertEquals(null, serviceState.foregroundPackage.first())
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**

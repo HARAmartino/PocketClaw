@@ -36,6 +36,24 @@ class ActionValidatorImpl @Inject constructor(
             "com.android.settings.accessibility.AccessibilitySettings",
             "com.android.settings.Settings\$AccessibilitySettingsActivity",
         )
+
+        /**
+         * Package names that must cause the agent to pause immediately when they
+         * appear in the foreground.  Checked in
+         * [com.pocketclaw.service.AgentAccessibilityService.onAccessibilityEvent].
+         *
+         * This list is intentionally conservative — it includes only system-level
+         * packages that are unambiguously sensitive.  User-configurable app blocklists
+         * are handled separately through the whitelist mechanism.
+         */
+        val HARD_DENY_PACKAGES: Set<String> = setOf(
+            "com.pocketclaw",
+            "com.android.settings",
+            "com.android.packageinstaller",
+            "com.google.android.packageinstaller",
+            "com.samsung.android.packageinstaller",
+            "com.miui.packageinstaller",
+        )
     }
 
     override fun validate(action: PendingAction): ValidationResult {

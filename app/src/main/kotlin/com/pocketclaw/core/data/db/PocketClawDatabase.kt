@@ -22,7 +22,7 @@ import com.pocketclaw.core.data.db.entity.WhitelistEntry
         WhitelistEntry::class,
         PluginTrustEntry::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

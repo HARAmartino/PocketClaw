@@ -1,6 +1,7 @@
 package com.pocketclaw.agent.orchestrator
 
 import android.util.Log
+import com.pocketclaw.agent.capability.CapabilityEnforcer
 import com.pocketclaw.agent.hitl.ApprovalContext
 import com.pocketclaw.agent.hitl.ApprovalResult
 import com.pocketclaw.agent.hitl.RemoteApprovalProvider
@@ -11,6 +12,8 @@ import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.agent.llm.schema.LlmConfig
 import com.pocketclaw.agent.llm.schema.Message
 import com.pocketclaw.agent.llm.schema.ParsedLlmOutput
+import com.pocketclaw.agent.tool.AgentTool
+import com.pocketclaw.agent.tool.ToolResult
 import com.pocketclaw.agent.validator.ActionValidator
 import com.pocketclaw.agent.validator.ValidationResult
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
@@ -44,6 +47,7 @@ import javax.inject.Singleton
 @Singleton
 class AgentOrchestrator @Inject constructor(
     private val actionValidator: ActionValidator,
+    private val capabilityEnforcer: CapabilityEnforcer,
     private val llmProvider: LlmProvider,
     private val llmOutputValidator: LlmOutputValidator,
     private val remoteApprovalProvider: RemoteApprovalProvider,
@@ -205,7 +209,9 @@ class AgentOrchestrator @Inject constructor(
                         )
                     }
                     is ParsedLlmOutput.ToolCall -> {
-                        // Tool call execution handled by tool registry
+                        // Tool call execution handled by tool registry.
+                        // CapabilityEnforcer is invoked via enforceAndExecuteTool()
+                        // before any tool.execute() call — this chain is uncircumventable.
                         conversationHistory.add(
                             Message(
                                 role = com.pocketclaw.agent.llm.schema.MessageRole.USER,
@@ -278,6 +284,25 @@ class AgentOrchestrator @Inject constructor(
         val outputCost = (response.outputTokens / 1_000_000.0) *
             (llmProvider.estimatedCostPerMillionOutputTokens)
         return inputCost + outputCost
+    }
+
+    /**
+     * Dispatches a tool call through the mandatory ActionValidator → CapabilityEnforcer
+     * security chain before invoking [AgentTool.execute].
+     *
+     * This method is the ONLY authorised entry point for tool execution.
+     * It is uncircumventable: any exception in either check aborts execution.
+     *
+     * @throws [com.pocketclaw.agent.capability.CapabilityViolationException] if the tool
+     *   has not declared the capability required by [requestedCapability].
+     */
+    suspend fun enforceAndExecuteTool(
+        tool: AgentTool,
+        requestedCapability: com.pocketclaw.agent.capability.Capability,
+        parameters: Map<String, Any>,
+    ): ToolResult {
+        capabilityEnforcer.enforce(tool, requestedCapability)
+        return tool.execute(parameters)
     }
 
     private fun sha256(input: String): String {

@@ -77,36 +77,37 @@ class AccessibilityTreeCompressor @Inject constructor() {
         }
 
         val bounds = Rect()
-        node.getBoundsInScreen(bounds)
+        try {
+            node.getBoundsInScreen(bounds)
 
-        val snapshot = NodeSnapshot(
-            className = node.className?.toString() ?: "",
-            text = node.text?.toString(),
-            contentDescription = node.contentDescription?.toString(),
-            viewIdResourceName = node.viewIdResourceName,
-            isClickable = node.isClickable,
-            isEditable = node.isEditable,
-            isScrollable = node.isScrollable,
-            bounds = bounds,
-            depth = depth,
-            children = if (depth < maxDepth) {
-                buildList {
-                    for (i in 0 until node.childCount) {
-                        val child = node.getChild(i) ?: continue
-                        try {
-                            add(captureSnapshot(child, depth + 1, maxDepth))
-                        } finally {
-                            // child is recycled inside captureSnapshot's own finally
+            return NodeSnapshot(
+                className = node.className?.toString() ?: "",
+                text = node.text?.toString(),
+                contentDescription = node.contentDescription?.toString(),
+                viewIdResourceName = node.viewIdResourceName,
+                isClickable = node.isClickable,
+                isEditable = node.isEditable,
+                isScrollable = node.isScrollable,
+                bounds = bounds,
+                depth = depth,
+                children = if (depth < maxDepth) {
+                    buildList {
+                        for (i in 0 until node.childCount) {
+                            val child = node.getChild(i) ?: continue
+                            try {
+                                add(captureSnapshot(child, depth + 1, maxDepth))
+                            } finally {
+                                // child is recycled inside captureSnapshot's own finally
+                            }
                         }
-                    }
-                }.filter { it.className.isNotEmpty() } // Remove invisible/empty placeholders
-            } else {
-                emptyList()
-            },
-        )
-
-        node.recycle()
-        return snapshot
+                    }.filter { it.className.isNotEmpty() } // Remove invisible/empty placeholders
+                } else {
+                    emptyList()
+                },
+            )
+        } finally {
+            node.recycle()
+        }
     }
 
     /**

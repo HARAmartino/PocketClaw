@@ -18,5 +18,9 @@ interface SecretStore {
     fun getBotToken(providerId: String): String?
     fun deleteBotToken(providerId: String)
 
+    fun saveWebhookUrl(providerId: String, url: String)
+    fun getWebhookUrl(providerId: String): String?
+    fun deleteWebhookUrl(providerId: String)
+
     fun clearAll()
 }

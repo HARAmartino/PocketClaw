@@ -14,6 +14,7 @@ import javax.inject.Singleton
  * Keys:
  * - API keys: "api_key_{providerId}"
  * - Bot tokens: "bot_token_{providerId}"
+ * - Webhook URLs: "webhook_url_{providerId}"
  *
  * The master key uses [MasterKey.DEFAULT_AES_GCM_MASTER_KEY_SPEC] (AES-256-GCM),
  * stored in the Android Keystore system (hardware-backed on API 23+ devices).
@@ -56,6 +57,17 @@ class SecretStoreImpl @Inject constructor(
 
     override fun deleteBotToken(providerId: String) {
         prefs.edit().remove("bot_token_$providerId").apply()
+    }
+
+    override fun saveWebhookUrl(providerId: String, url: String) {
+        prefs.edit().putString("webhook_url_$providerId", url).apply()
+    }
+
+    override fun getWebhookUrl(providerId: String): String? =
+        prefs.getString("webhook_url_$providerId", null)
+
+    override fun deleteWebhookUrl(providerId: String) {
+        prefs.edit().remove("webhook_url_$providerId").apply()
     }
 
     override fun clearAll() {

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- アプリ -->
+    <string name="app_name">PocketClaw</string>
+
+    <!-- 通知チャンネル -->
+    <string name="notification_channel_name">PocketClaw エージェント</string>
+    <string name="notification_channel_description">バックグラウンドエージェントサービスの通知</string>
+
+    <!-- エージェント通知 -->
+    <string name="notification_agent_running_title">PocketClaw エージェント稼働中</string>
+    <string name="notification_agent_running_text">タップしてダッシュボードを開く</string>
+    <string name="notification_agent_paused_title">PocketClaw エージェント停止中</string>
+    <string name="notification_action_stop">停止</string>
+
+    <!-- キルスイッチ -->
+    <string name="kill_switch_content_description">キルスイッチ — 全エージェント動作を即時停止</string>
+
+    <!-- 権限オンボーディング -->
+    <string name="onboarding_title">必要な権限</string>
+    <string name="onboarding_description">PocketClaw の動作には以下の権限が必要です。エージェントを開始する前にすべて許可してください。</string>
+    <string name="onboarding_grant_button">許可 →</string>
+    <string name="onboarding_oem_hint">Xiaomi・Huawei・OPPO・Samsung・Vivo 端末では、24時間稼働のためにデバイス設定で自動起動・保護対象アプリ・バックグラウンドアシストの有効化が必要な場合があります。</string>
+
+    <!-- 権限ラベル -->
+    <string name="permission_accessibility_label">アクセシビリティサービス（UI 操作）</string>
+    <string name="permission_notification_listener_label">通知リスナー（通知によるトリガー）</string>
+    <string name="permission_overlay_label">他のアプリの上に表示（キルスイッチ FAB）</string>
+    <string name="permission_media_projection_label">画面キャプチャ（ビジュアルアクションタイムライン）</string>
+    <string name="permission_battery_optimization_label">バッテリー最適化の除外（24時間稼働）</string>
+
+    <!-- アクセシビリティサービス -->
+    <string name="accessibility_service_label">PocketClaw エージェント</string>
+
+    <!-- 通知リスナー -->
+    <string name="notification_listener_label">PocketClaw エージェント</string>
+
+    <!-- 音声操作 -->
+    <string name="voice_interaction_service_label">PocketClaw アシスタント</string>
+
+    <!-- ダッシュボード -->
+    <string name="dashboard_title">ダッシュボード</string>
+    <string name="dashboard_start">エージェント開始</string>
+    <string name="dashboard_stop">エージェント停止</string>
+    <string name="dashboard_auto_pilot_warning">オートパイロット有効 — 標準アクションの HITL をバイパス中</string>
+    <string name="dashboard_charging_advisory">バッテリーへの負担を減らすため、充電ケーブルを抜くことをご検討ください</string>
+    <string name="dashboard_thermal_warning">高温を検出 — エージェントを停止しました</string>
+    <string name="dashboard_battery_warning">バッテリー残量低下 — エージェントを停止しました</string>
+
+    <!-- ターミナル -->
+    <string name="terminal_title">上級ターミナル</string>
+    <string name="terminal_command_hint">次の LLM プロンプトに注入するコマンドを入力…</string>
+</resources>

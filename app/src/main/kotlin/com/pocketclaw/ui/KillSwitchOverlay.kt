@@ -39,6 +39,8 @@ class KillSwitchOverlay(
     private val context: Context,
     private val orchestrator: AgentOrchestrator,
     private val service: AgentForegroundService,
+    /** Called after the root scope and wake lock are released. Use to disable the AccessibilityService. */
+    private val onKillSwitchActivated: (() -> Unit)? = null,
 ) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var overlayView: ComposeView? = null
@@ -83,7 +85,7 @@ class KillSwitchOverlay(
         android.util.Log.w("KillSwitch", "KILL_SWITCH_ACTIVATED: User pressed Kill Switch FAB.")
         orchestrator.killSwitch()
         service.releaseWakeLock()
-        // AccessibilityService self-disables via its own observer on the scope cancellation
+        onKillSwitchActivated?.invoke()
     }
 }
 

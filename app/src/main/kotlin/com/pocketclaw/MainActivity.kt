@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pocketclaw.ui.dashboard.DashboardScreen
 import com.pocketclaw.ui.onboarding.PermissionOnboardingScreen
+import com.pocketclaw.ui.settings.SettingsScreen
 import com.pocketclaw.ui.terminal.TerminalScreen
 import com.pocketclaw.ui.theme.PocketClawTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,6 +22,7 @@ private object Routes {
     const val ONBOARDING = "onboarding"
     const val DASHBOARD = "dashboard"
     const val TERMINAL = "terminal"
+    const val SETTINGS = "settings"
 }
 
 @AndroidEntryPoint
@@ -64,12 +66,23 @@ fun PocketClawApp() {
                 onNavigateToTerminal = {
                     navController.navigate(Routes.TERMINAL)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(Routes.SETTINGS)
+                },
             )
         }
 
         composable(Routes.TERMINAL) {
             TerminalScreen(
                 onNavigateToDashboard = {
+                    navController.navigateUp()
+                },
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onNavigateUp = {
                     navController.navigateUp()
                 },
             )

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Warning
@@ -88,6 +89,7 @@ private val ThermalRed = Color(0xFFC62828)
 @Composable
 fun DashboardScreen(
     onNavigateToTerminal: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -103,6 +105,12 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.dashboard_title)) },
                 actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.settings_open_settings),
+                        )
+                    }
                     TextButton(onClick = onNavigateToTerminal) {
                         Text(stringResource(R.string.terminal_title))
                     }

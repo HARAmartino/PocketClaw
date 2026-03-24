@@ -4,7 +4,8 @@ import com.pocketclaw.agent.llm.schema.LlmConfig
 import com.pocketclaw.agent.llm.schema.LlmResponse
 import com.pocketclaw.agent.llm.schema.Message
 import com.pocketclaw.agent.llm.schema.MessageRole
-import com.pocketclaw.agent.llm.schema.ToolDefinitionimport com.pocketclaw.core.data.secret.SecretStore
+import com.pocketclaw.agent.llm.schema.ToolDefinition
+import com.pocketclaw.core.data.secret.SecretStore
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.header

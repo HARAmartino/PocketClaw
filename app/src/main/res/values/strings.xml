@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">PocketClaw</string>
+
+    <!-- Notification channel -->
+    <string name="notification_channel_name">PocketClaw Agent</string>
+    <string name="notification_channel_description">Background agent service notifications</string>
+
+    <!-- Agent notifications -->
+    <string name="notification_agent_running_title">PocketClaw Agent Running</string>
+    <string name="notification_agent_running_text">Tap to open dashboard</string>
+    <string name="notification_agent_paused_title">PocketClaw Agent Paused</string>
+    <string name="notification_action_stop">Stop</string>
+
+    <!-- Kill Switch -->
+    <string name="kill_switch_content_description">Kill Switch — Stop all agent activity immediately</string>
+
+    <!-- Permission onboarding -->
+    <string name="onboarding_title">Required Permissions</string>
+    <string name="onboarding_description">PocketClaw requires the following permissions to operate. All must be granted before the agent can start.</string>
+    <string name="onboarding_grant_button">Grant →</string>
+    <string name="onboarding_oem_hint">On Xiaomi, Huawei, OPPO, Samsung, or Vivo devices, you may also need to enable AutoStart / Protected Apps / Background Assist in your device settings for 24/7 operation.</string>
+
+    <!-- Permission labels -->
+    <string name="permission_accessibility_label">Accessibility Service (UI automation)</string>
+    <string name="permission_notification_listener_label">Notification Listener (trigger on notifications)</string>
+    <string name="permission_overlay_label">Display Over Other Apps (Kill Switch FAB)</string>
+    <string name="permission_media_projection_label">Screen Capture (Visual Action Timeline)</string>
+    <string name="permission_battery_optimization_label">Battery Optimization Exemption (24/7 operation)</string>
+
+    <!-- Accessibility service -->
+    <string name="accessibility_service_label">PocketClaw Agent</string>
+
+    <!-- Notification listener -->
+    <string name="notification_listener_label">PocketClaw Agent</string>
+
+    <!-- Voice interaction -->
+    <string name="voice_interaction_service_label">PocketClaw Assistant</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_start">Start Agent</string>
+    <string name="dashboard_stop">Stop Agent</string>
+    <string name="dashboard_auto_pilot_warning">Auto-Pilot Active — HITL bypassed for standard actions</string>
+    <string name="dashboard_charging_advisory">Consider unplugging to reduce battery wear on this device</string>
+    <string name="dashboard_thermal_warning">High temperature detected — agent paused</string>
+    <string name="dashboard_battery_warning">Low battery — agent paused</string>
+
+    <!-- Terminal -->
+    <string name="terminal_title">Advanced Terminal</string>
+    <string name="terminal_command_hint">Enter command to inject into next LLM prompt…</string>
+</resources>

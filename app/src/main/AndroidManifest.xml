@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ── Permissions ─────────────────────────────────────────────────── -->
+
+    <!-- Foreground service permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- System alert window (Kill Switch FAB overlay) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Wake lock for active task execution only -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Battery optimization exemption -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Receive boot completed for ServiceWatchdogReceiver -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Network -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ── Custom IPC Permission ────────────────────────────────────────── -->
+    <!-- Only apps signed with the same certificate (or privileged system apps)
+         may INSERT into TaskQueueContentProvider. -->
+    <permission
+        android:name="com.pocketclaw.SEND_TASK"
+        android:protectionLevel="signature|privileged" />
+
+    <application
+        android:name=".PocketClawApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PocketClaw"
+        tools:targetApi="35">
+
+        <!-- ── Main Activity ───────────────────────────────────────────── -->
+        <!-- exported=true required for LAUNCHER intent -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── Agent Foreground Service ────────────────────────────────── -->
+        <!-- exported=false: internal start/stop only -->
+        <service
+            android:name=".service.AgentForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|dataSync" />
+
+        <!-- ── Accessibility Service ────────────────────────────────────── -->
+        <!-- exported=true: required by AccessibilityService contract -->
+        <service
+            android:name=".service.AgentAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- ── Notification Listener Service ───────────────────────────── -->
+        <!-- exported=true: required by NotificationListenerService contract -->
+        <service
+            android:name=".service.AgentNotificationListenerService"
+            android:exported="true"
+            android:label="@string/notification_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- ── ServiceWatchdog BroadcastReceiver ────────────────────────── -->
+        <!-- exported=false: only our own AlarmManager fires it -->
+        <receiver
+            android:name=".service.ServiceWatchdogReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── TaskQueueContentProvider ────────────────────────────────── -->
+        <!-- exported=true: allows other apps to insert tasks via IPC.
+             Protected by signature-level permission. -->
+        <provider
+            android:name=".service.TaskQueueContentProvider"
+            android:authorities="com.pocketclaw.taskqueue"
+            android:exported="true"
+            android:permission="com.pocketclaw.SEND_TASK"
+            android:readPermission="com.pocketclaw.SEND_TASK"
+            android:writePermission="com.pocketclaw.SEND_TASK" />
+
+        <!-- ── Voice Interaction Service ────────────────────────────────── -->
+        <!-- exported=true: required for OS assistant integration.
+             User sets PocketClaw as default assistant manually. -->
+        <service
+            android:name=".service.AgentVoiceInteractionService"
+            android:exported="true"
+            android:label="@string/voice_interaction_service_label"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_config" />
+        </service>
+
+        <!-- exported=false: session service, only invoked by VoiceInteractionService -->
+        <service
+            android:name=".service.AgentVoiceInteractionSessionService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VOICE_INTERACTION_SESSION" />
+
+    </application>
+
+</manifest>

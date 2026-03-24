@@ -22,6 +22,7 @@ import com.pocketclaw.core.data.db.entity.CostLedgerEntry
 import com.pocketclaw.core.data.db.entity.TaskJournalEntry
 import com.pocketclaw.core.data.db.entity.TaskStatus
 import com.pocketclaw.core.data.db.entity.TaskType
+import com.pocketclaw.service.AgentServiceState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -53,6 +54,7 @@ class AgentOrchestrator @Inject constructor(
     private val remoteApprovalProvider: RemoteApprovalProvider,
     private val taskJournalDao: TaskJournalDao,
     private val costLedgerDao: CostLedgerDao,
+    private val serviceState: AgentServiceState,
 ) {
     companion object {
         private const val TAG = "AgentOrchestrator"
@@ -126,6 +128,7 @@ class AgentOrchestrator @Inject constructor(
                 val tokensUsedToday = costLedgerDao.totalTokensSince(startOfDay) ?: 0L
                 if (tokensUsedToday >= dailyTokenBudget) {
                     Log.w(TAG, "[$taskId] Daily token budget exhausted ($tokensUsedToday tokens).")
+                    serviceState.setBudgetExhausted(true)
                     taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
                     remoteApprovalProvider.sendNotification(
                         "PocketClaw: Daily token budget exhausted. Task '$title' paused.",
@@ -170,6 +173,7 @@ class AgentOrchestrator @Inject constructor(
                 val hashCount = recentHashes.count { it == stateHash }
                 if (hashCount >= LOOP_REPEAT_THRESHOLD) {
                     Log.w(TAG, "[$taskId] LOOP_DETECTED at iteration $iteration.")
+                    serviceState.setLoopDetected(true)
                     taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
                     requestHitlAndHandle(taskId, title, iteration, "Loop detected", RiskLevel.HIGH)
                     return@withContext

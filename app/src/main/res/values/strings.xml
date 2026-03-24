@@ -46,6 +46,8 @@
     <string name="dashboard_charging_advisory">Consider unplugging to reduce battery wear on this device</string>
     <string name="dashboard_thermal_warning">High temperature detected — agent paused</string>
     <string name="dashboard_battery_warning">Low battery — agent paused</string>
+    <string name="dashboard_budget_exhausted">Daily token budget exhausted — agent paused</string>
+    <string name="dashboard_loop_detected">Task loop detected — agent paused</string>
 
     <!-- Terminal -->
     <string name="terminal_title">Advanced Terminal</string>

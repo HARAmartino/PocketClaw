@@ -46,6 +46,8 @@
     <string name="dashboard_charging_advisory">バッテリーへの負担を減らすため、充電ケーブルを抜くことをご検討ください</string>
     <string name="dashboard_thermal_warning">高温を検出 — エージェントを停止しました</string>
     <string name="dashboard_battery_warning">バッテリー残量低下 — エージェントを停止しました</string>
+    <string name="dashboard_budget_exhausted">1日のトークン予算を超過 — エージェントを停止しました</string>
+    <string name="dashboard_loop_detected">タスクのループを検出 — エージェントを停止しました</string>
 
     <!-- ターミナル -->
     <string name="terminal_title">上級ターミナル</string>

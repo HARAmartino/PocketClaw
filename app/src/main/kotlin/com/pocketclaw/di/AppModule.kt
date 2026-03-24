@@ -1,6 +1,9 @@
 package com.pocketclaw.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.pocketclaw.agent.capability.CapabilityEnforcer
 import com.pocketclaw.agent.capability.CapabilityEnforcerImpl
@@ -105,6 +108,21 @@ object DatabaseModule {
 
     @Provides
     fun providePluginTrustStoreDao(db: PocketClawDatabase): PluginTrustStoreDao = db.pluginTrustStoreDao()
+}
+
+private val Context.prefDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "pocketclaw_prefs",
+)
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DataStoreModule {
+
+    @Provides
+    @Singleton
+    fun provideDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.prefDataStore
 }
 
 @Module

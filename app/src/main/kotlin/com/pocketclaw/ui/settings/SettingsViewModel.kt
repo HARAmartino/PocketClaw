@@ -12,6 +12,7 @@ import com.pocketclaw.agent.hitl.TelegramApprovalProvider
 import com.pocketclaw.agent.llm.provider.LlmException
 import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.agent.llm.schema.LlmConfig
+import com.pocketclaw.core.data.prefs.NotificationTriggerPrefs
 import com.pocketclaw.core.data.secret.SecretStore
 import com.pocketclaw.ui.dashboard.DashboardViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,7 @@ internal object SettingsKeys {
     val DAILY_TOKEN_BUDGET = intPreferencesKey("daily_token_budget")
     val MAX_ITERATIONS = intPreferencesKey("max_iterations")
     val AUTO_PILOT = DashboardViewModel.AUTO_PILOT_KEY
+    val NOTIFICATION_TRIGGER_PACKAGES = NotificationTriggerPrefs.TRIGGER_PACKAGES_KEY
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -83,6 +85,8 @@ data class SettingsUiState(
     val dailyTokenBudget: Int = SettingsDefaults.DAILY_TOKEN_BUDGET,
     val maxIterations: Int = SettingsDefaults.MAX_ITERATIONS,
     val isAutoPilotEnabled: Boolean = false,
+    val notificationTriggerPackages: Set<String> = emptySet(),
+    val notificationTriggerInput: String = "",
     val apiKeyError: String? = null,
     val isSaving: Boolean = false,
     val isTestingConnection: Boolean = false,
@@ -128,6 +132,8 @@ class SettingsViewModel @Inject constructor(
                     maxIterations = prefs[SettingsKeys.MAX_ITERATIONS]
                         ?: SettingsDefaults.MAX_ITERATIONS,
                     isAutoPilotEnabled = prefs[SettingsKeys.AUTO_PILOT] ?: false,
+                    notificationTriggerPackages = prefs[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES]
+                        ?: emptySet(),
                 )
             }
         }
@@ -136,6 +142,14 @@ class SettingsViewModel @Inject constructor(
             dataStore.data.map { it[SettingsKeys.AUTO_PILOT] ?: false }.collect { enabled ->
                 _uiState.update { it.copy(isAutoPilotEnabled = enabled) }
             }
+        }
+        // Observe trigger packages in real time
+        viewModelScope.launch {
+            dataStore.data
+                .map { it[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES] ?: emptySet() }
+                .collect { packages ->
+                    _uiState.update { it.copy(notificationTriggerPackages = packages) }
+                }
         }
     }
 
@@ -239,6 +253,42 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(isAutoPilotEnabled = enabled) }
         viewModelScope.launch {
             dataStore.edit { it[SettingsKeys.AUTO_PILOT] = enabled }
+        }
+    }
+
+    // ── Notification trigger packages ─────────────────────────────────────────
+
+    fun setNotificationTriggerInput(input: String) {
+        _uiState.update { it.copy(notificationTriggerInput = input) }
+    }
+
+    /**
+     * Adds the package name currently in [SettingsUiState.notificationTriggerInput]
+     * to the trigger set if it is non-blank and not already present.
+     */
+    fun addNotificationTriggerPackage() {
+        val pkg = _uiState.value.notificationTriggerInput.trim()
+        if (pkg.isBlank()) return
+        val current = _uiState.value.notificationTriggerPackages
+        if (pkg in current) {
+            _uiState.update { it.copy(notificationTriggerInput = "") }
+            return
+        }
+        val updated = current + pkg
+        _uiState.update {
+            it.copy(notificationTriggerPackages = updated, notificationTriggerInput = "")
+        }
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES] = updated }
+        }
+    }
+
+    /** Removes [packageName] from the notification trigger set. */
+    fun removeNotificationTriggerPackage(packageName: String) {
+        val updated = _uiState.value.notificationTriggerPackages - packageName
+        _uiState.update { it.copy(notificationTriggerPackages = updated) }
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES] = updated }
         }
     }
 

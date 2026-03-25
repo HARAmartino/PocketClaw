@@ -3,15 +3,21 @@ package com.pocketclaw.service
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.pocketclaw.agent.orchestrator.AgentOrchestrator
 import com.pocketclaw.agent.security.InputSource
 import com.pocketclaw.agent.security.SuspicionScorer
 import com.pocketclaw.agent.security.TrustedInputBoundary
+import com.pocketclaw.core.data.prefs.NotificationTriggerPrefs
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
@@ -21,8 +27,11 @@ import javax.inject.Inject
  *
  * Security pipeline (Layer 4):
  * 1. [SuspicionScorer] checks for injection patterns.
- * 2. If suspicious → force HITL (even in Auto-Pilot).
+ * 2. If suspicious → force HITL (even in Auto-Pilot); notification is not enqueued.
  * 3. All content wrapped in [TrustedInputBoundary] before reaching the LLM.
+ * 4. Check if [StatusBarNotification.getPackageName] is in the user-configured
+ *    trigger list ([NotificationTriggerPrefs.TRIGGER_PACKAGES_KEY]).
+ * 5. If triggered: call [AgentOrchestrator.enqueueNotificationTask].
  *
  * Connection resilience:
  * - [onListenerDisconnected] triggers exponential-backoff reconnect.
@@ -41,6 +50,12 @@ class AgentNotificationListenerService : NotificationListenerService() {
 
     @Inject
     lateinit var trustedInputBoundary: TrustedInputBoundary
+
+    @Inject
+    lateinit var orchestrator: AgentOrchestrator
+
+    @Inject
+    lateinit var dataStore: DataStore<Preferences>
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var backoffDelayMs = 1_000L
@@ -66,10 +81,24 @@ class AgentNotificationListenerService : NotificationListenerService() {
 
             if (isSuspicious) {
                 Log.w(TAG, "INJECTION_SUSPECTED in notification from ${sbn.packageName}: '${content.take(80)}'")
-                // Escalate to HITL — orchestrator handles this via notification channel
+                // Suspicious content forces HITL — do not auto-enqueue.
+                return@launch
+            }
+
+            // Check whether this package is in the user-configured trigger list
+            val triggerPackages = dataStore.data
+                .map { prefs -> prefs[NotificationTriggerPrefs.TRIGGER_PACKAGES_KEY] ?: emptySet() }
+                .first()
+
+            if (sbn.packageName in triggerPackages) {
+                Log.i(TAG, "Notification from trigger package '${sbn.packageName}' — enqueueing task.")
+                orchestrator.enqueueNotificationTask(
+                    title = title,
+                    wrappedContent = wrapped,
+                    sourcePackage = sbn.packageName,
+                )
             } else {
-                Log.d(TAG, "Notification from ${sbn.packageName} wrapped and ready for enqueue.")
-                // Enqueue to orchestrator trigger queue
+                Log.d(TAG, "Notification from '${sbn.packageName}' is not in trigger list — ignored.")
             }
         }
     }
@@ -91,3 +120,4 @@ class AgentNotificationListenerService : NotificationListenerService() {
         Log.i(TAG, "NotificationListenerService destroyed.")
     }
 }
+

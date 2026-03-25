@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -237,6 +239,17 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Notification Triggers ─────────────────────────────────────────
+            SettingsSection(title = stringResource(R.string.settings_notification_triggers_section)) {
+                NotificationTriggerSection(
+                    packages = state.notificationTriggerPackages,
+                    input = state.notificationTriggerInput,
+                    onInputChange = viewModel::setNotificationTriggerInput,
+                    onAdd = viewModel::addNotificationTriggerPackage,
+                    onRemove = viewModel::removeNotificationTriggerPackage,
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -374,5 +387,65 @@ private fun LabeledSlider(
             steps = steps,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+@Composable
+private fun NotificationTriggerSection(
+    packages: Set<String>,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onAdd: () -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInputChange,
+                label = { Text(stringResource(R.string.settings_notification_triggers_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Ascii,
+                    imeAction = ImeAction.Done,
+                ),
+                modifier = Modifier.weight(1f),
+            )
+            Button(onClick = onAdd) {
+                Text(stringResource(R.string.settings_notification_triggers_add))
+            }
+        }
+        if (packages.isEmpty()) {
+            Text(
+                text = stringResource(R.string.settings_notification_triggers_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            packages.sorted().forEach { pkg ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = pkg,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { onRemove(pkg) }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(
+                                R.string.settings_notification_triggers_remove_cd,
+                                pkg,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     }
 }

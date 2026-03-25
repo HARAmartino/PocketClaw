@@ -55,6 +55,8 @@ data class DashboardUiState(
     val recentTasks: List<TaskJournalEntry> = emptyList(),
     val budgetExhausted: Boolean = false,
     val loopDetected: Boolean = false,
+    /** Package name of the app currently in the foreground, or null if unknown. */
+    val foregroundPackage: String? = null,
 )
 
 /** Configuration for a user-defined task trigger. */
@@ -123,6 +125,7 @@ class DashboardViewModel @Inject constructor(
         observeCharging()
         observeBudget()
         observeLoop()
+        observeForegroundPackage()
         observeRecentTasks()
         observeDailyCost()
         observeAutoPilot()
@@ -205,6 +208,14 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             serviceState.loopDetected.collect { detected ->
                 _uiState.update { it.copy(loopDetected = detected) }
+            }
+        }
+    }
+
+    private fun observeForegroundPackage() {
+        viewModelScope.launch {
+            serviceState.foregroundPackage.collect { pkg ->
+                _uiState.update { it.copy(foregroundPackage = pkg) }
             }
         }
     }

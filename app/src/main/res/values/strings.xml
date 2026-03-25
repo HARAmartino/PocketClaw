@@ -75,4 +75,11 @@
     <string name="settings_battery_section">Battery</string>
     <string name="settings_oem_battery_button">Open OEM Battery Settings</string>
     <string name="settings_open_settings">Settings</string>
+
+    <!-- Notification trigger packages -->
+    <string name="settings_notification_triggers_section">Notification Triggers</string>
+    <string name="settings_notification_triggers_hint">Package name (e.g. com.example.app)</string>
+    <string name="settings_notification_triggers_add">Add</string>
+    <string name="settings_notification_triggers_remove_cd">Remove %1$s from trigger list</string>
+    <string name="settings_notification_triggers_empty">No trigger packages configured.</string>
 </resources>

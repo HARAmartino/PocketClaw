@@ -42,6 +42,14 @@ class AgentServiceState @Inject constructor() {
     private val _loopDetected = MutableStateFlow(false)
     val loopDetected: StateFlow<Boolean> = _loopDetected.asStateFlow()
 
+    /**
+     * The package name of the app currently in the foreground.
+     * Updated by [com.pocketclaw.service.AgentAccessibilityService] on every
+     * [android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED] event.
+     */
+    private val _foregroundPackage = MutableStateFlow<String?>(null)
+    val foregroundPackage: StateFlow<String?> = _foregroundPackage.asStateFlow()
+
     fun setRunning(running: Boolean) {
         _isRunning.value = running
     }
@@ -68,5 +76,9 @@ class AgentServiceState @Inject constructor() {
 
     fun setLoopDetected(detected: Boolean) {
         _loopDetected.value = detected
+    }
+
+    fun setForegroundPackage(packageName: String?) {
+        _foregroundPackage.value = packageName
     }
 }

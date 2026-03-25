@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.util.UUID
@@ -63,6 +64,7 @@ class AgentOrchestrator @Inject constructor(
         private const val LOOP_REPEAT_THRESHOLD = 3
         private const val MAX_LLM_RETRIES = 3
         private const val DAILY_TOKEN_BUDGET_DEFAULT = 100_000L
+        private const val MILLIS_PER_DAY = 86_400_000L
     }
 
     /** Root scope. Kill Switch calls [killSwitch] to cancel everything. */
@@ -73,12 +75,78 @@ class AgentOrchestrator @Inject constructor(
     var isAutoPilotEnabled: Boolean = false
 
     /**
+     * Set when a hard-deny app enters the foreground.
+     * [runTask] checks this flag at the start of every iteration and returns early.
+     */
+    @Volatile private var hardDenyPackage: String? = null
+
+    /**
      * Activates the Kill Switch: cancels all running coroutines.
      * Called by the Kill Switch FAB overlay.
      */
     fun killSwitch() {
         Log.w(TAG, "KILL_SWITCH_ACTIVATED: Cancelling root scope.")
         rootScope.cancel("Kill Switch activated by user.")
+    }
+
+    /**
+     * Pauses all active tasks when a Hard-Deny app enters the foreground.
+     * Sets [hardDenyPackage] so the next [runTask] iteration exits early.
+     * Sends a notification and updates [AgentServiceState].
+     *
+     * Called by [com.pocketclaw.service.AgentAccessibilityService] on
+     * [android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED].
+     */
+    suspend fun pauseForHardDenyApp(packageName: String) {
+        hardDenyPackage = packageName
+        serviceState.setRunning(false)
+        Log.w(TAG, "HARD_DENY_APP_FOREGROUND: '$packageName' — all tasks paused.")
+        remoteApprovalProvider.sendNotification(
+            "PocketClaw paused: sensitive app '$packageName' entered the foreground.",
+        )
+    }
+
+    /**
+     * Enqueues a task triggered by an incoming notification.
+     *
+     * Token-budget gate: if today's usage already exceeds [dailyTokenBudget],
+     * the task is silently dropped (budget-exhausted state is set on [serviceState]).
+     *
+     * The task is launched in [rootScope] so it is subject to the Kill Switch.
+     * [taskType] is set to [TaskType.IPC] — the closest existing classification
+     * until a NOTIFICATION type is added in Phase 5.
+     *
+     * @param title       Notification title (used as task title).
+     * @param wrappedContent  TrustedInputBoundary-wrapped notification body.
+     * @param sourcePackage   Package name of the notification origin.
+     */
+    suspend fun enqueueNotificationTask(
+        title: String,
+        wrappedContent: String,
+        sourcePackage: String,
+    ) {
+        // Respect daily token budget before enqueuing
+        val startOfDay = System.currentTimeMillis() - MILLIS_PER_DAY
+        val tokensUsedToday = costLedgerDao.totalTokensSince(startOfDay) ?: 0L
+        if (tokensUsedToday >= dailyTokenBudget) {
+            Log.w(TAG, "Daily token budget exhausted — notification task from '$sourcePackage' rejected.")
+            serviceState.setBudgetExhausted(true)
+            return
+        }
+
+        val taskTitle = "Notification: $title (from $sourcePackage)"
+        Log.i(TAG, "Enqueueing notification task: $taskTitle")
+
+        rootScope.launch {
+            runTask(
+                title = taskTitle,
+                taskType = TaskType.IPC,
+                goalPrompt = wrappedContent,
+                systemPrompt = "You are an AI agent triggered by a notification. " +
+                    "Analyse the notification content provided and take the appropriate action. " +
+                    "Source app: $sourcePackage.",
+            )
+        }
     }
 
     /**
@@ -123,8 +191,15 @@ class AgentOrchestrator @Inject constructor(
                 iteration++
                 taskJournalDao.incrementIteration(taskId, System.currentTimeMillis())
 
+                // Abort immediately if a Hard-Deny app is in the foreground
+                if (hardDenyPackage != null) {
+                    Log.w(TAG, "[$taskId] Aborting: hard-deny app '${hardDenyPackage}' in foreground.")
+                    taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
+                    return@withContext
+                }
+
                 // Check daily token budget
-                val startOfDay = System.currentTimeMillis() - 86_400_000L
+                val startOfDay = System.currentTimeMillis() - MILLIS_PER_DAY
                 val tokensUsedToday = costLedgerDao.totalTokensSince(startOfDay) ?: 0L
                 if (tokensUsedToday >= dailyTokenBudget) {
                     Log.w(TAG, "[$taskId] Daily token budget exhausted ($tokensUsedToday tokens).")

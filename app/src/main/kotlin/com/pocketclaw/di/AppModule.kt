@@ -14,6 +14,8 @@ import com.pocketclaw.agent.llm.PassthroughPrivacyRouter
 import com.pocketclaw.agent.llm.PrivacyRouter
 import com.pocketclaw.agent.scheduler.HeartbeatManager
 import com.pocketclaw.agent.scheduler.HeartbeatManagerImpl
+import com.pocketclaw.agent.skill.SkillDiscoverer
+import com.pocketclaw.agent.skill.SkillLoader
 import com.pocketclaw.agent.security.HardcodedSecurityPolicy
 import com.pocketclaw.agent.security.NetworkGateway
 import com.pocketclaw.agent.security.SecurityPolicy
@@ -84,6 +86,10 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindHeartbeatManager(impl: HeartbeatManagerImpl): HeartbeatManager
+
+    @Binds
+    @Singleton
+    abstract fun bindSkillDiscoverer(impl: SkillLoader): SkillDiscoverer
 }
 
 @Module

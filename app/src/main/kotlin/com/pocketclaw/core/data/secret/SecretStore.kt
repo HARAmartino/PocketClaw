@@ -22,5 +22,14 @@ interface SecretStore {
     fun getWebhookUrl(providerId: String): String?
     fun deleteWebhookUrl(providerId: String)
 
+    /** Stores an OAuth token (access or refresh) for the given [providerId]. */
+    fun saveOAuthToken(providerId: String, token: String)
+
+    /** Returns the stored OAuth token for [providerId], or null if not set. */
+    fun getOAuthToken(providerId: String): String?
+
+    /** Removes the OAuth token for [providerId]. */
+    fun deleteOAuthToken(providerId: String)
+
     fun clearAll()
 }

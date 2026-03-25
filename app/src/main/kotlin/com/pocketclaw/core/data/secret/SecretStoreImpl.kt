@@ -70,6 +70,17 @@ class SecretStoreImpl @Inject constructor(
         prefs.edit().remove("webhook_url_$providerId").apply()
     }
 
+    override fun saveOAuthToken(providerId: String, token: String) {
+        prefs.edit().putString("oauth_token_$providerId", token).apply()
+    }
+
+    override fun getOAuthToken(providerId: String): String? =
+        prefs.getString("oauth_token_$providerId", null)
+
+    override fun deleteOAuthToken(providerId: String) {
+        prefs.edit().remove("oauth_token_$providerId").apply()
+    }
+
     override fun clearAll() {
         prefs.edit().clear().apply()
     }

@@ -13,6 +13,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Interface for skill discovery. Extracted so that callers (e.g., [com.pocketclaw.ui.skill.SkillApprovalViewModel])
+ * can be tested without a real [android.content.Context].
+ */
+interface SkillDiscoverer {
+    /** Returns the list of trusted, installed PocketClaw skill apps. */
+    suspend fun discoverSkills(): List<DiscoveredSkill>
+}
+
+/**
  * Discovers PocketClaw skill applications installed on the device.
  *
  * **Discovery mechanism:** [discoverSkills] queries [PackageManager] for all
@@ -29,7 +38,7 @@ import javax.inject.Singleton
 class SkillLoader @Inject constructor(
     @ApplicationContext private val context: Context,
     private val skillTrustStoreDao: SkillTrustStoreDao,
-) {
+) : SkillDiscoverer {
     companion object {
         private const val TAG = "SkillLoader"
 

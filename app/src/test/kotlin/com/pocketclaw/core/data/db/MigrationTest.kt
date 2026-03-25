@@ -52,13 +52,25 @@ class MigrationTest {
         assertNotNull(DatabaseModule.MIGRATION_2_3)
     }
 
+    // ── 3 → 4 ─────────────────────────────────────────────────────────────────
+
     @Test
-    fun database_currentVersionIs3() {
-        // Verify that the declared DB version matches the latest migration endpoint.
-        assertEquals(
-            "Migration endVersion must match the declared DB version",
-            3,
-            DatabaseModule.MIGRATION_2_3.endVersion,
-        )
+    fun migration_3_4_startVersionIs3() {
+        assertEquals(3, DatabaseModule.MIGRATION_3_4.startVersion)
+    }
+
+    @Test
+    fun migration_3_4_endVersionIs4() {
+        assertEquals(4, DatabaseModule.MIGRATION_3_4.endVersion)
+    }
+
+    @Test
+    fun migration_3_4_objectIsNotNull() {
+        assertNotNull(DatabaseModule.MIGRATION_3_4)
+    }
+
+    @Test
+    fun database_currentVersionIs4() {
+        assertEquals(4, DatabaseModule.MIGRATION_3_4.endVersion)
     }
 }

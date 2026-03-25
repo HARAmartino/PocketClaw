@@ -52,4 +52,10 @@
     <!-- ターミナル -->
     <string name="terminal_title">上級ターミナル</string>
     <string name="terminal_command_hint">次の LLM プロンプトに注入するコマンドを入力…</string>
+
+    <!-- ハートビート -->
+    <string name="settings_heartbeat_section">ハートビート</string>
+    <string name="settings_heartbeat_enabled_label">定期ハートビートを有効にする</string>
+    <string name="settings_heartbeat_interval_label">間隔: %1$d 分</string>
+    <string name="settings_heartbeat_prompt_label">ハートビートプロンプト</string>
 </resources>

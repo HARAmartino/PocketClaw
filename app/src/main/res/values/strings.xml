@@ -82,4 +82,10 @@
     <string name="settings_notification_triggers_add">Add</string>
     <string name="settings_notification_triggers_remove_cd">Remove %1$s from trigger list</string>
     <string name="settings_notification_triggers_empty">No trigger packages configured.</string>
+
+    <!-- Heartbeat -->
+    <string name="settings_heartbeat_section">Heartbeat</string>
+    <string name="settings_heartbeat_enabled_label">Enable periodic heartbeat</string>
+    <string name="settings_heartbeat_interval_label">Interval: %1$d min</string>
+    <string name="settings_heartbeat_prompt_label">Heartbeat prompt</string>
 </resources>

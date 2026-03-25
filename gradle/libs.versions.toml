@@ -13,6 +13,7 @@ composeBom = "2024.08.00"
 # Dagger Hilt
 hilt = "2.51.1"
 hiltNavigationCompose = "1.2.0"
+hiltWork = "1.2.0"
 
 # Coroutines
 coroutines = "1.8.1"
@@ -37,6 +38,9 @@ securityCrypto = "1.1.0-alpha06"
 
 # Navigation
 navigationCompose = "2.7.7"
+
+# WorkManager
+workManager = "2.9.1"
 
 # Other
 appcompat = "1.7.0"
@@ -101,6 +105,11 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 
 # Security
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+
+# WorkManager
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
 
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }

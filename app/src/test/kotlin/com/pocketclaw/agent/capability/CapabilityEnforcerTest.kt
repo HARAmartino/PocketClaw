@@ -1,28 +1,28 @@
 package com.pocketclaw.agent.capability
 
-import com.pocketclaw.agent.tool.AgentTool
-import com.pocketclaw.agent.tool.IntegrationMode
-import com.pocketclaw.agent.tool.ToolManifest
-import com.pocketclaw.agent.tool.ToolResult
+import com.pocketclaw.agent.skill.AgentSkill
+import com.pocketclaw.agent.skill.IntegrationMode
+import com.pocketclaw.agent.skill.SkillManifest
+import com.pocketclaw.agent.skill.SkillResult
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-/** Minimal fake tool for capability enforcement tests. */
-private class FakeTool(
-    override val toolId: String,
+/** Minimal fake skill for capability enforcement tests. */
+private class FakeSkill(
+    override val skillId: String,
     declaredCapabilities: Set<Capability>,
-) : AgentTool {
-    override val manifest = ToolManifest(
-        toolId = toolId,
+) : AgentSkill {
+    override val manifest = SkillManifest(
+        skillId = skillId,
         integrationMode = IntegrationMode.API,
         requiredCapabilities = declaredCapabilities,
-        description = "Fake tool for testing",
+        description = "Fake skill for testing",
         author = "test",
         version = "0.0.1",
     )
 
-    override suspend fun execute(parameters: Map<String, Any>): ToolResult =
-        ToolResult.Success("ok")
+    override suspend fun execute(parameters: Map<String, Any>): SkillResult =
+        SkillResult.Success("ok")
 
     override fun cancel() = Unit
 }
@@ -33,35 +33,35 @@ class CapabilityEnforcerTest {
 
     @Test
     fun enforce_declaredCapability_doesNotThrow() {
-        val tool = FakeTool("net-tool", setOf(Capability.NETWORK_REQUEST))
-        enforcer.enforce(tool, Capability.NETWORK_REQUEST) // Should not throw
+        val skill = FakeSkill("net-skill", setOf(Capability.NETWORK_REQUEST))
+        enforcer.enforce(skill, Capability.NETWORK_REQUEST) // Should not throw
     }
 
     @Test
     fun enforce_undeclaredCapability_throwsCapabilityViolationException() {
-        val tool = FakeTool("read-only-tool", setOf(Capability.FILE_READ))
+        val skill = FakeSkill("read-only-skill", setOf(Capability.FILE_READ))
         assertThrows(CapabilityViolationException::class.java) {
-            enforcer.enforce(tool, Capability.FILE_WRITE)
+            enforcer.enforce(skill, Capability.FILE_WRITE)
         }
     }
 
     @Test
-    fun enforce_exceptionContainsToolIdAndCapabilities() {
-        val tool = FakeTool("net-tool", setOf(Capability.NETWORK_REQUEST))
+    fun enforce_exceptionContainsSkillIdAndCapabilities() {
+        val skill = FakeSkill("net-skill", setOf(Capability.NETWORK_REQUEST))
         val ex = assertThrows(CapabilityViolationException::class.java) {
-            enforcer.enforce(tool, Capability.ACCESSIBILITY_WRITE)
+            enforcer.enforce(skill, Capability.ACCESSIBILITY_WRITE)
         }
-        assert(ex.toolId == "net-tool")
+        assert(ex.skillId == "net-skill")
         assert(ex.requestedCapability == Capability.ACCESSIBILITY_WRITE)
         assert(ex.declaredCapabilities == setOf(Capability.NETWORK_REQUEST))
     }
 
     @Test
     fun enforce_emptyDeclaredCapabilities_alwaysThrows() {
-        val tool = FakeTool("empty-tool", emptySet())
+        val skill = FakeSkill("empty-skill", emptySet())
         Capability.entries.forEach { cap ->
             assertThrows(CapabilityViolationException::class.java) {
-                enforcer.enforce(tool, cap)
+                enforcer.enforce(skill, cap)
             }
         }
     }

@@ -94,7 +94,7 @@ data class LlmAction(
 
 /**
  * Schema 2: Tool call produced by the LLM.
- * The [toolId] MUST match a registered AgentTool; validated by [LlmOutputValidator].
+ * The [toolId] MUST match a registered AgentSkill; validated by [LlmOutputValidator].
  * The [reasoning] field is mandatory (max 200 characters).
  */
 @Serializable

@@ -7,7 +7,7 @@ import com.pocketclaw.agent.llm.schema.LlmOutputType
 import com.pocketclaw.agent.llm.schema.LlmToolCall
 import com.pocketclaw.agent.llm.schema.LlmValidationError
 import com.pocketclaw.agent.llm.schema.ParsedLlmOutput
-import com.pocketclaw.agent.tool.AgentTool
+import com.pocketclaw.agent.skill.AgentSkill
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -32,10 +32,10 @@ class LlmOutputValidator @Inject constructor(
         private const val MAX_REASONING_LENGTH = 200
     }
 
-    private val registeredTools = mutableMapOf<String, AgentTool>()
+    private val registeredTools = mutableMapOf<String, AgentSkill>()
 
-    fun registerTool(tool: AgentTool) {
-        registeredTools[tool.toolId] = tool
+    fun registerTool(tool: AgentSkill) {
+        registeredTools[tool.skillId] = tool
     }
 
     fun validate(rawContent: String): Result<ParsedLlmOutput> {

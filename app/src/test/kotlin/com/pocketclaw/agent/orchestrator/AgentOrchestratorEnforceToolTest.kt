@@ -3,10 +3,10 @@ package com.pocketclaw.agent.orchestrator
 import com.pocketclaw.agent.capability.Capability
 import com.pocketclaw.agent.capability.CapabilityEnforcerImpl
 import com.pocketclaw.agent.capability.CapabilityViolationException
-import com.pocketclaw.agent.tool.AgentTool
-import com.pocketclaw.agent.tool.IntegrationMode
-import com.pocketclaw.agent.tool.ToolManifest
-import com.pocketclaw.agent.tool.ToolResult
+import com.pocketclaw.agent.skill.AgentSkill
+import com.pocketclaw.agent.skill.IntegrationMode
+import com.pocketclaw.agent.skill.SkillManifest
+import com.pocketclaw.agent.skill.SkillResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -14,28 +14,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Minimal fake for capability enforcement tests. */
-private class FakeTool(
-    override val toolId: String,
+private class FakeSkill(
+    override val skillId: String,
     declaredCapabilities: Set<Capability>,
-    private val result: ToolResult = ToolResult.Success("ok"),
-) : AgentTool {
-    override val manifest = ToolManifest(
-        toolId = toolId,
+    private val result: SkillResult = SkillResult.Success("ok"),
+) : AgentSkill {
+    override val manifest = SkillManifest(
+        skillId = skillId,
         integrationMode = IntegrationMode.API,
         requiredCapabilities = declaredCapabilities,
-        description = "Fake tool for testing",
+        description = "Fake skill for testing",
         author = "test",
         version = "0.0.1",
     )
 
-    override suspend fun execute(parameters: Map<String, Any>): ToolResult = result
+    override suspend fun execute(parameters: Map<String, Any>): SkillResult = result
 
     override fun cancel() = Unit
 }
 
 /**
- * Tests that [AgentOrchestrator.enforceAndExecuteTool] enforces the
- * ActionValidator → CapabilityEnforcer chain for all tool executions.
+ * Tests that [AgentOrchestrator.enforceAndExecuteSkill] enforces the
+ * ActionValidator → CapabilityEnforcer chain for all skill executions.
  *
  * Uses [CapabilityEnforcerImpl] directly — no mocking needed because
  * CapabilityEnforcer has no external dependencies.
@@ -45,34 +45,34 @@ class AgentOrchestratorEnforceToolTest {
     private val enforcer = CapabilityEnforcerImpl()
 
     @Test
-    fun enforceAndExecuteTool_declaredCapability_executesTool() = runBlocking {
-        val tool = FakeTool("net-tool", setOf(Capability.NETWORK_REQUEST))
+    fun enforceAndExecuteSkill_declaredCapability_executesSkill() = runBlocking {
+        val skill = FakeSkill("net-skill", setOf(Capability.NETWORK_REQUEST))
         val result = enforcer.let {
-            it.enforce(tool, Capability.NETWORK_REQUEST) // must not throw
-            tool.execute(emptyMap())
+            it.enforce(skill, Capability.NETWORK_REQUEST) // must not throw
+            skill.execute(emptyMap())
         }
-        assertTrue(result is ToolResult.Success)
-        assertEquals("ok", (result as ToolResult.Success).output)
+        assertTrue(result is SkillResult.Success)
+        assertEquals("ok", (result as SkillResult.Success).output)
     }
 
     @Test
-    fun enforceAndExecuteTool_undeclaredCapability_throwsBeforeExecution() {
-        val tool = FakeTool(
-            toolId = "read-only-tool",
+    fun enforceAndExecuteSkill_undeclaredCapability_throwsBeforeExecution() {
+        val skill = FakeSkill(
+            skillId = "read-only-skill",
             declaredCapabilities = setOf(Capability.FILE_READ),
-            result = ToolResult.Success("should not reach"),
+            result = SkillResult.Success("should not reach"),
         )
         assertThrows(CapabilityViolationException::class.java) {
-            enforcer.enforce(tool, Capability.FILE_WRITE)
+            enforcer.enforce(skill, Capability.FILE_WRITE)
         }
     }
 
     @Test
-    fun enforceAndExecuteTool_noDeclaredCapabilities_alwaysThrows() {
-        val tool = FakeTool("empty-tool", emptySet())
+    fun enforceAndExecuteSkill_noDeclaredCapabilities_alwaysThrows() {
+        val skill = FakeSkill("empty-skill", emptySet())
         Capability.entries.forEach { cap ->
             assertThrows(CapabilityViolationException::class.java) {
-                enforcer.enforce(tool, cap)
+                enforcer.enforce(skill, cap)
             }
         }
     }

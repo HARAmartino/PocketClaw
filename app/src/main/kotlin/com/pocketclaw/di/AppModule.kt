@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pocketclaw.agent.capability.CapabilityEnforcer
@@ -46,6 +47,9 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -95,6 +99,16 @@ abstract class AppModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+
+    /** Built-in whitelist domains seeded on fresh install. */
+    val BUILTIN_WHITELIST_DOMAINS = listOf(
+        "api.openai.com",
+        "api.anthropic.com",
+        "api.telegram.org",
+        "gmail.googleapis.com",
+        "oauth2.googleapis.com",
+        "discord.com",
+    )
 
     /**
      * Placeholder migration from schema version 1 to 2.
@@ -150,6 +164,19 @@ object DatabaseModule {
         "pocketclaw.db",
     )
         .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addCallback(object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                BUILTIN_WHITELIST_DOMAINS.forEach { domain ->
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO whitelist_store " +
+                            "(domain, addedAtMs, addedBy, note) " +
+                            "VALUES (?, ?, 'BUILTIN', 'Default seed')",
+                        arrayOf(domain, now),
+                    )
+                }
+            }
+        })
         .build()
 
     @Provides
@@ -186,6 +213,12 @@ object DataStoreModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Provides
     @Singleton

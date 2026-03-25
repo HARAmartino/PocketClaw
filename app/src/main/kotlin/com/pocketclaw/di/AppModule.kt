@@ -12,6 +12,8 @@ import com.pocketclaw.agent.capability.CapabilityEnforcerImpl
 import com.pocketclaw.agent.llm.LlmOutputValidator
 import com.pocketclaw.agent.llm.PassthroughPrivacyRouter
 import com.pocketclaw.agent.llm.PrivacyRouter
+import com.pocketclaw.agent.scheduler.HeartbeatManager
+import com.pocketclaw.agent.scheduler.HeartbeatManagerImpl
 import com.pocketclaw.agent.security.HardcodedSecurityPolicy
 import com.pocketclaw.agent.security.NetworkGateway
 import com.pocketclaw.agent.security.SecurityPolicy
@@ -78,6 +80,10 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindSecurityPolicy(impl: HardcodedSecurityPolicy): SecurityPolicy
+
+    @Binds
+    @Singleton
+    abstract fun bindHeartbeatManager(impl: HeartbeatManagerImpl): HeartbeatManager
 }
 
 @Module
@@ -98,6 +104,21 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migration from schema version 2 to 3.
+     *
+     * Adds the [TaskType.NOTIFICATION] enum value to the TaskType domain.
+     * Because TaskType is stored as its [Enum.name] string in SQLite, no
+     * DDL change is required — the new string value ("NOTIFICATION") is
+     * backward-compatible with existing rows.
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // No schema change required: TaskType is stored as a String name.
+            // The new NOTIFICATION value is additive and backward-compatible.
+        }
+    }
+
     @Provides
     @Singleton
     fun providePocketClawDatabase(
@@ -107,7 +128,7 @@ object DatabaseModule {
         PocketClawDatabase::class.java,
         "pocketclaw.db",
     )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
 
     @Provides

@@ -12,6 +12,7 @@ import com.pocketclaw.agent.hitl.TelegramApprovalProvider
 import com.pocketclaw.agent.llm.provider.LlmException
 import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.agent.llm.schema.LlmConfig
+import com.pocketclaw.agent.scheduler.HeartbeatManager
 import com.pocketclaw.core.data.prefs.NotificationTriggerPrefs
 import com.pocketclaw.core.data.secret.SecretStore
 import com.pocketclaw.ui.dashboard.DashboardViewModel
@@ -91,6 +92,9 @@ data class SettingsUiState(
     val isSaving: Boolean = false,
     val isTestingConnection: Boolean = false,
     val connectionTestResult: String? = null,
+    val isHeartbeatEnabled: Boolean = false,
+    val heartbeatIntervalMinutes: Int = HeartbeatManager.DEFAULT_INTERVAL_MINUTES,
+    val heartbeatPrompt: String = HeartbeatManager.DEFAULT_PROMPT,
 )
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
@@ -100,6 +104,7 @@ class SettingsViewModel @Inject constructor(
     private val secretStore: SecretStore,
     private val dataStore: DataStore<Preferences>,
     private val llmProvider: LlmProvider,
+    private val heartbeatManager: HeartbeatManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -134,6 +139,11 @@ class SettingsViewModel @Inject constructor(
                     isAutoPilotEnabled = prefs[SettingsKeys.AUTO_PILOT] ?: false,
                     notificationTriggerPackages = prefs[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES]
                         ?: emptySet(),
+                    isHeartbeatEnabled = prefs[HeartbeatManager.HEARTBEAT_ENABLED_KEY] ?: false,
+                    heartbeatIntervalMinutes = prefs[HeartbeatManager.HEARTBEAT_INTERVAL_MINUTES_KEY]
+                        ?: HeartbeatManager.DEFAULT_INTERVAL_MINUTES,
+                    heartbeatPrompt = prefs[HeartbeatManager.HEARTBEAT_PROMPT_KEY]
+                        ?: HeartbeatManager.DEFAULT_PROMPT,
                 )
             }
         }
@@ -289,6 +299,36 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(notificationTriggerPackages = updated) }
         viewModelScope.launch {
             dataStore.edit { it[SettingsKeys.NOTIFICATION_TRIGGER_PACKAGES] = updated }
+        }
+    }
+
+    // ── Heartbeat ─────────────────────────────────────────────────────────────
+
+    /** Enables or disables the periodic heartbeat. */
+    fun setHeartbeatEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isHeartbeatEnabled = enabled) }
+        viewModelScope.launch {
+            if (enabled) heartbeatManager.enable() else heartbeatManager.disable()
+        }
+    }
+
+    /** Updates the heartbeat interval in minutes and re-schedules if active. */
+    fun setHeartbeatIntervalMinutes(minutes: Int) {
+        val clamped = minutes.coerceIn(
+            HeartbeatManager.MIN_INTERVAL_MINUTES,
+            HeartbeatManager.MAX_INTERVAL_MINUTES,
+        )
+        _uiState.update { it.copy(heartbeatIntervalMinutes = clamped) }
+        viewModelScope.launch {
+            heartbeatManager.setIntervalMinutes(clamped)
+        }
+    }
+
+    /** Updates the heartbeat prompt text. */
+    fun setHeartbeatPrompt(prompt: String) {
+        _uiState.update { it.copy(heartbeatPrompt = prompt) }
+        viewModelScope.launch {
+            heartbeatManager.setPrompt(prompt)
         }
     }
 

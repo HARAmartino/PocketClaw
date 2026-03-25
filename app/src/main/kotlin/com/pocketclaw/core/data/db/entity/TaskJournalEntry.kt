@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /** Classification of task origin. */
-enum class TaskType { USER, HEARTBEAT, IPC, SCHEDULED }
+enum class TaskType { USER, HEARTBEAT, IPC, SCHEDULED, NOTIFICATION }
 
 /** Lifecycle state of a task. Append-only — never delete records. */
 enum class TaskStatus { PENDING, EXECUTING, COMMITTED, FAILED, ROLLED_BACK }

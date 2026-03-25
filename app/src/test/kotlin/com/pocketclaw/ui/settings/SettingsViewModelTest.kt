@@ -9,6 +9,7 @@ import com.pocketclaw.agent.llm.schema.LlmConfig
 import com.pocketclaw.agent.llm.schema.LlmResponse
 import com.pocketclaw.agent.llm.schema.Message
 import com.pocketclaw.agent.llm.schema.ToolDefinition
+import com.pocketclaw.agent.scheduler.HeartbeatManager
 import com.pocketclaw.core.data.secret.SecretStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -100,8 +101,28 @@ class SettingsViewModelTest {
         }
     }
 
+    private class FakeHeartbeatManager : HeartbeatManager {
+        var enabled = false
+        var intervalMinutes = HeartbeatManager.DEFAULT_INTERVAL_MINUTES
+        var prompt = HeartbeatManager.DEFAULT_PROMPT
+
+        override suspend fun enable() { enabled = true }
+        override suspend fun disable() { enabled = false }
+        override suspend fun setIntervalMinutes(minutes: Int) {
+            intervalMinutes = minutes.coerceIn(
+                HeartbeatManager.MIN_INTERVAL_MINUTES,
+                HeartbeatManager.MAX_INTERVAL_MINUTES,
+            )
+        }
+        override suspend fun setPrompt(prompt: String) { this.prompt = prompt }
+        override suspend fun rescheduleAfterExecution() {}
+        override suspend fun readPrompt() = prompt
+        override suspend fun isEnabled() = enabled
+    }
+
     private lateinit var secretStore: FakeSecretStore
     private lateinit var dataStore: FakeDataStore
+    private lateinit var heartbeatManager: FakeHeartbeatManager
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
@@ -109,6 +130,7 @@ class SettingsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         secretStore = FakeSecretStore()
         dataStore = FakeDataStore()
+        heartbeatManager = FakeHeartbeatManager()
     }
 
     @After
@@ -116,7 +138,7 @@ class SettingsViewModelTest {
         Dispatchers.resetMain()
     }
     private fun buildViewModel(llmProvider: LlmProvider = FakeLlmProvider()): SettingsViewModel =
-        SettingsViewModel(secretStore, dataStore, llmProvider)
+        SettingsViewModel(secretStore, dataStore, llmProvider, heartbeatManager)
 
     // ── validateApiKey ────────────────────────────────────────────────────────
 
@@ -275,5 +297,46 @@ class SettingsViewModelTest {
         vm.testConnection()
         assertNotNull(vm.uiState.value.apiKeyError)
         assertNull(vm.uiState.value.connectionTestResult)
+    }
+
+    // ── Heartbeat ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun setHeartbeatEnabled_true_updatesState() = runTest {
+        val vm = buildViewModel()
+        vm.setHeartbeatEnabled(true)
+        assertTrue(vm.uiState.value.isHeartbeatEnabled)
+        assertTrue(heartbeatManager.enabled)
+    }
+
+    @Test
+    fun setHeartbeatEnabled_false_updatesState() = runTest {
+        val vm = buildViewModel()
+        vm.setHeartbeatEnabled(true)
+        vm.setHeartbeatEnabled(false)
+        assertTrue(!vm.uiState.value.isHeartbeatEnabled)
+        assertTrue(!heartbeatManager.enabled)
+    }
+
+    @Test
+    fun setHeartbeatIntervalMinutes_clampedToMin() = runTest {
+        val vm = buildViewModel()
+        vm.setHeartbeatIntervalMinutes(1)
+        assertEquals(HeartbeatManager.MIN_INTERVAL_MINUTES, vm.uiState.value.heartbeatIntervalMinutes)
+    }
+
+    @Test
+    fun setHeartbeatIntervalMinutes_clampedToMax() = runTest {
+        val vm = buildViewModel()
+        vm.setHeartbeatIntervalMinutes(999)
+        assertEquals(HeartbeatManager.MAX_INTERVAL_MINUTES, vm.uiState.value.heartbeatIntervalMinutes)
+    }
+
+    @Test
+    fun setHeartbeatPrompt_updatesState() = runTest {
+        val vm = buildViewModel()
+        vm.setHeartbeatPrompt("Check everything")
+        assertEquals("Check everything", vm.uiState.value.heartbeatPrompt)
+        assertEquals("Check everything", heartbeatManager.prompt)
     }
 }

@@ -6,17 +6,19 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 /**
- * Unit tests for the Room database migration from version 1 to version 2.
+ * Unit tests for the Room database migrations.
  *
- * These tests verify the migration object's metadata and that the
- * [com.pocketclaw.di.DatabaseModule.MIGRATION_1_2] constant is correctly
- * wired without requiring a real SQLite database.
+ * These tests verify the migration objects' metadata and that the
+ * [DatabaseModule] constants are correctly wired without requiring a real
+ * SQLite database.
  *
  * Full end-to-end migration verification (with [androidx.room.testing.MigrationTestHelper])
  * requires an Android device or emulator and should be added as an instrumented
  * test in `androidTest` once the CI environment supports it.
  */
 class MigrationTest {
+
+    // ── 1 → 2 ─────────────────────────────────────────────────────────────────
 
     @Test
     fun migration_1_2_startVersionIs1() {
@@ -33,15 +35,30 @@ class MigrationTest {
         assertNotNull(DatabaseModule.MIGRATION_1_2)
     }
 
+    // ── 2 → 3 ─────────────────────────────────────────────────────────────────
+
     @Test
-    fun database_currentVersionIs2() {
-        // Verify that PocketClawDatabase's @Database annotation declares version 2.
-        // This is a compile-time constant surfaced via the generated class, so we
-        // verify it indirectly through the migration chain endpoints.
+    fun migration_2_3_startVersionIs2() {
+        assertEquals(2, DatabaseModule.MIGRATION_2_3.startVersion)
+    }
+
+    @Test
+    fun migration_2_3_endVersionIs3() {
+        assertEquals(3, DatabaseModule.MIGRATION_2_3.endVersion)
+    }
+
+    @Test
+    fun migration_2_3_objectIsNotNull() {
+        assertNotNull(DatabaseModule.MIGRATION_2_3)
+    }
+
+    @Test
+    fun database_currentVersionIs3() {
+        // Verify that the declared DB version matches the latest migration endpoint.
         assertEquals(
             "Migration endVersion must match the declared DB version",
-            2,
-            DatabaseModule.MIGRATION_1_2.endVersion,
+            3,
+            DatabaseModule.MIGRATION_2_3.endVersion,
         )
     }
 }

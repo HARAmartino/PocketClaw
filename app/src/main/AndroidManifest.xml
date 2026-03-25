@@ -21,6 +21,10 @@
     <!-- Receive boot completed for ServiceWatchdogReceiver -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Exact alarm scheduling (Doze-safe task/heartbeat scheduler) -->
+    <!-- Required on API 31+ to use setExactAndAllowWhileIdle; falls back to WorkManager if denied -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -41,6 +45,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PocketClaw"
         tools:targetApi="35">
+
+        <!-- Disable default WorkManager initializer; HiltWorkerFactory is used instead -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <!-- ── Main Activity ───────────────────────────────────────────── -->
         <!-- exported=true required for LAUNCHER intent -->
@@ -108,6 +124,18 @@
             android:permission="com.pocketclaw.SEND_TASK"
             android:readPermission="com.pocketclaw.SEND_TASK"
             android:writePermission="com.pocketclaw.SEND_TASK" />
+
+        <!-- ── Scheduled Task BroadcastReceiver ─────────────────────────── -->
+        <!-- exported=false: only our own AlarmManager fires it -->
+        <receiver
+            android:name=".agent.scheduler.ScheduledTaskReceiver"
+            android:exported="false" />
+
+        <!-- ── Heartbeat BroadcastReceiver ──────────────────────────────── -->
+        <!-- exported=false: only our own AlarmManager fires it -->
+        <receiver
+            android:name=".agent.scheduler.HeartbeatReceiver"
+            android:exported="false" />
 
         <!-- ── Voice Interaction Service ────────────────────────────────── -->
         <!-- exported=true: required for OS assistant integration.

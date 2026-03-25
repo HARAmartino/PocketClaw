@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pocketclaw.R
+import com.pocketclaw.agent.scheduler.HeartbeatManager
 import com.pocketclaw.util.DeepLinkHelper
 import kotlin.math.roundToInt
 
@@ -248,6 +249,43 @@ fun SettingsScreen(
                     onAdd = viewModel::addNotificationTriggerPackage,
                     onRemove = viewModel::removeNotificationTriggerPackage,
                 )
+            }
+
+            // ── Heartbeat ─────────────────────────────────────────────────────
+            SettingsSection(title = stringResource(R.string.settings_heartbeat_section)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.settings_heartbeat_enabled_label))
+                    Switch(
+                        checked = state.isHeartbeatEnabled,
+                        onCheckedChange = viewModel::setHeartbeatEnabled,
+                    )
+                }
+                if (state.isHeartbeatEnabled) {
+                    LabeledSlider(
+                        label = stringResource(
+                            R.string.settings_heartbeat_interval_label,
+                            state.heartbeatIntervalMinutes,
+                        ),
+                        value = state.heartbeatIntervalMinutes.toFloat(),
+                        onValueChange = { viewModel.setHeartbeatIntervalMinutes(it.roundToInt()) },
+                        valueRange = HeartbeatManager.MIN_INTERVAL_MINUTES.toFloat()..
+                            HeartbeatManager.MAX_INTERVAL_MINUTES.toFloat(),
+                        steps = ((HeartbeatManager.MAX_INTERVAL_MINUTES -
+                            HeartbeatManager.MIN_INTERVAL_MINUTES) / 15) - 1,
+                    )
+                    OutlinedTextField(
+                        value = state.heartbeatPrompt,
+                        onValueChange = viewModel::setHeartbeatPrompt,
+                        label = { Text(stringResource(R.string.settings_heartbeat_prompt_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 5,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

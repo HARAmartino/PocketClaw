@@ -12,6 +12,8 @@ import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.agent.llm.schema.LlmConfig
 import com.pocketclaw.agent.llm.schema.Message
 import com.pocketclaw.agent.llm.schema.ParsedLlmOutput
+import com.pocketclaw.agent.scheduler.HeartbeatManager
+import com.pocketclaw.agent.scheduler.SchedulerManager
 import com.pocketclaw.agent.tool.AgentTool
 import com.pocketclaw.agent.tool.ToolResult
 import com.pocketclaw.agent.validator.ActionValidator
@@ -56,6 +58,8 @@ class AgentOrchestrator @Inject constructor(
     private val taskJournalDao: TaskJournalDao,
     private val costLedgerDao: CostLedgerDao,
     private val serviceState: AgentServiceState,
+    private val schedulerManager: SchedulerManager,
+    private val heartbeatManager: HeartbeatManager,
 ) {
     companion object {
         private const val TAG = "AgentOrchestrator"
@@ -113,8 +117,7 @@ class AgentOrchestrator @Inject constructor(
      * the task is silently dropped (budget-exhausted state is set on [serviceState]).
      *
      * The task is launched in [rootScope] so it is subject to the Kill Switch.
-     * [taskType] is set to [TaskType.IPC] — the closest existing classification
-     * until a NOTIFICATION type is added in Phase 5.
+     * [taskType] is set to [TaskType.NOTIFICATION].
      *
      * @param title       Notification title (used as task title).
      * @param wrappedContent  TrustedInputBoundary-wrapped notification body.
@@ -140,12 +143,70 @@ class AgentOrchestrator @Inject constructor(
         rootScope.launch {
             runTask(
                 title = taskTitle,
-                taskType = TaskType.IPC,
+                taskType = TaskType.NOTIFICATION,
                 goalPrompt = wrappedContent,
                 systemPrompt = "You are an AI agent triggered by a notification. " +
                     "Analyse the notification content provided and take the appropriate action. " +
                     "Source app: $sourcePackage.",
             )
+        }
+    }
+
+    /**
+     * Loads the stored configuration for [taskId] from [SchedulerManager] and runs
+     * the task with [TaskType.SCHEDULED].
+     *
+     * After completion, [SchedulerManager.rescheduleAfterExecution] is called so the
+     * next alarm is registered (since [AlarmManager.setExactAndAllowWhileIdle] is
+     * one-shot and must be re-registered after each fire).
+     *
+     * @param taskId  The task identifier stored when the task was originally scheduled.
+     */
+    suspend fun enqueueScheduledTask(taskId: String) {
+        val config = schedulerManager.loadTaskConfig(taskId) ?: run {
+            Log.w(TAG, "No config found for scheduled task '$taskId' — skipping.")
+            return
+        }
+        Log.i(TAG, "Enqueueing scheduled task '${config.title}' ($taskId).")
+        rootScope.launch {
+            try {
+                runTask(
+                    title = config.title,
+                    taskType = TaskType.SCHEDULED,
+                    goalPrompt = config.prompt,
+                    systemPrompt = "You are an AI agent running a scheduled task. " +
+                        "Execute the following goal: ${config.title}.",
+                )
+            } finally {
+                schedulerManager.rescheduleAfterExecution(taskId)
+            }
+        }
+    }
+
+    /**
+     * Reads the heartbeat prompt from [HeartbeatManager] and runs a task with
+     * [TaskType.HEARTBEAT]. The result is delivered as a notification via
+     * [RemoteApprovalProvider.sendNotification] — no HITL approval is needed.
+     *
+     * After completion, [HeartbeatManager.rescheduleAfterExecution] is called to
+     * register the next heartbeat alarm.
+     */
+    suspend fun enqueueHeartbeatTask() {
+        val prompt = heartbeatManager.readPrompt()
+        Log.i(TAG, "Enqueueing heartbeat task.")
+        rootScope.launch {
+            try {
+                runTask(
+                    title = "Heartbeat",
+                    taskType = TaskType.HEARTBEAT,
+                    goalPrompt = prompt,
+                    systemPrompt = "You are an AI agent performing a periodic heartbeat check. " +
+                        "Answer concisely; your response will be sent as a notification.",
+                )
+                remoteApprovalProvider.sendNotification("PocketClaw heartbeat complete.")
+            } finally {
+                heartbeatManager.rescheduleAfterExecution()
+            }
         }
     }
 

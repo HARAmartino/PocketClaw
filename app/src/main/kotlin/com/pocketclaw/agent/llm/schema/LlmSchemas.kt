@@ -93,14 +93,14 @@ data class LlmAction(
 )
 
 /**
- * Schema 2: Skill call produced by the LLM.
- * The [skillId] MUST match a registered AgentSkill; validated by [LlmOutputValidator].
+ * Schema 2: Tool call produced by the LLM.
+ * The [toolId] MUST match a registered AgentSkill; validated by [LlmOutputValidator].
  * The [reasoning] field is mandatory (max 200 characters).
  */
 @Serializable
 data class LlmToolCall(
     val type: LlmOutputType = LlmOutputType.TOOL_CALL,
-    @SerialName("skill_id") val skillId: String,
+    @SerialName("tool_id") val toolId: String,
     val parameters: JsonElement,
     val reasoning: String,
     @SerialName("requires_approval") val requiresApproval: Boolean = false,
@@ -134,7 +134,7 @@ sealed class ParsedLlmOutput {
 /** Validation errors produced by [LlmOutputValidator]. */
 sealed class LlmValidationError {
     data class SchemaViolation(val detail: String) : LlmValidationError()
-    data class UnknownSkill(val skillId: String) : LlmValidationError()
+    data class UnknownTool(val toolId: String) : LlmValidationError()
     data class MissingReasoning(val outputType: LlmOutputType) : LlmValidationError()
     data class ReasoningTooLong(val length: Int, val max: Int) : LlmValidationError()
     data class UnknownType(val type: String) : LlmValidationError()

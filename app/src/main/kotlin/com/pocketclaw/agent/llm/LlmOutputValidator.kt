@@ -21,7 +21,7 @@ import javax.inject.Inject
  * 2. "type" unknown → [LlmValidationError.UnknownType]
  * 3. Missing "reasoning" → [LlmValidationError.MissingReasoning]
  * 4. "reasoning" > 200 chars → [LlmValidationError.ReasoningTooLong]
- * 5. "skill_id" not in registry → [LlmValidationError.UnknownSkill]
+ * 5. "tool_id" not in registry → [LlmValidationError.UnknownTool]
  *
  * On any error: the orchestrator retries the LLM call (max 3 times), then escalates to HITL.
  */
@@ -32,10 +32,10 @@ class LlmOutputValidator @Inject constructor(
         private const val MAX_REASONING_LENGTH = 200
     }
 
-    private val registeredSkills = mutableMapOf<String, AgentSkill>()
+    private val registeredTools = mutableMapOf<String, AgentSkill>()
 
-    fun registerSkill(skill: AgentSkill) {
-        registeredSkills[skill.skillId] = skill
+    fun registerTool(tool: AgentSkill) {
+        registeredTools[tool.skillId] = tool
     }
 
     fun validate(rawContent: String): Result<ParsedLlmOutput> {
@@ -94,8 +94,8 @@ class LlmOutputValidator @Inject constructor(
             validateReasoning(toolCall.reasoning, LlmOutputType.TOOL_CALL)?.let {
                 return Result.failure(toException(it))
             }
-            if (toolCall.skillId !in registeredSkills) {
-                return Result.failure(toException(LlmValidationError.UnknownSkill(toolCall.skillId)))
+            if (toolCall.toolId !in registeredTools) {
+                return Result.failure(toException(LlmValidationError.UnknownTool(toolCall.toolId)))
             }
             Result.success(ParsedLlmOutput.ToolCall(toolCall))
         } catch (e: Exception) {

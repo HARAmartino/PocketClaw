@@ -1,6 +1,6 @@
 package com.pocketclaw.agent.capability
 
-import com.pocketclaw.agent.tool.AgentTool
+import com.pocketclaw.agent.skill.AgentSkill
 
 /** The set of capabilities that agent tools can declare and request. */
 enum class Capability {
@@ -18,28 +18,28 @@ enum class Capability {
 }
 
 /**
- * Thrown when an [AgentTool] attempts an operation that exceeds its declared
- * [com.pocketclaw.agent.tool.ToolManifest.requiredCapabilities].
- * Triggers automatic plugin quarantine and HITL escalation.
+ * Thrown when an [AgentSkill] attempts an operation that exceeds its declared
+ * [com.pocketclaw.agent.skill.SkillManifest.requiredCapabilities].
+ * Triggers automatic skill quarantine and HITL escalation.
  */
 class CapabilityViolationException(
-    val toolId: String,
+    val skillId: String,
     val requestedCapability: Capability,
     val declaredCapabilities: Set<Capability>,
 ) : SecurityException(
-    "Tool '$toolId' requested capability $requestedCapability " +
+    "Skill '$skillId' requested capability $requestedCapability " +
         "but only declared: $declaredCapabilities",
 )
 
 /**
- * Wraps every [AgentTool.execute] call and verifies the requested operation
- * matches the tool's declared [com.pocketclaw.agent.tool.ToolManifest.requiredCapabilities].
+ * Wraps every [AgentSkill.execute] call and verifies the requested operation
+ * matches the skill's declared [com.pocketclaw.agent.skill.SkillManifest.requiredCapabilities].
  * Any violation throws [CapabilityViolationException] — never bypassed.
  */
 interface CapabilityEnforcer {
     /**
      * @throws CapabilityViolationException if [requestedCapability] is not in
-     *   [AgentTool.manifest.requiredCapabilities].
+     *   [AgentSkill.manifest.requiredCapabilities].
      */
-    fun enforce(tool: AgentTool, requestedCapability: Capability)
+    fun enforce(skill: AgentSkill, requestedCapability: Capability)
 }

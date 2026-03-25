@@ -1,6 +1,6 @@
 package com.pocketclaw.agent.capability
 
-import com.pocketclaw.agent.tool.AgentTool
+import com.pocketclaw.agent.skill.AgentSkill
 import javax.inject.Inject
 
 /**
@@ -9,12 +9,12 @@ import javax.inject.Inject
  */
 class CapabilityEnforcerImpl @Inject constructor() : CapabilityEnforcer {
 
-    override fun enforce(tool: AgentTool, requestedCapability: Capability) {
-        if (requestedCapability !in tool.manifest.requiredCapabilities) {
+    override fun enforce(skill: AgentSkill, requestedCapability: Capability) {
+        if (requestedCapability !in skill.manifest.requiredCapabilities) {
             throw CapabilityViolationException(
-                toolId = tool.toolId,
+                skillId = skill.skillId,
                 requestedCapability = requestedCapability,
-                declaredCapabilities = tool.manifest.requiredCapabilities,
+                declaredCapabilities = skill.manifest.requiredCapabilities,
             )
         }
     }

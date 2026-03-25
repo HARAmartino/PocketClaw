@@ -14,8 +14,8 @@ import com.pocketclaw.agent.llm.schema.Message
 import com.pocketclaw.agent.llm.schema.ParsedLlmOutput
 import com.pocketclaw.agent.scheduler.HeartbeatManager
 import com.pocketclaw.agent.scheduler.SchedulerManager
-import com.pocketclaw.agent.tool.AgentTool
-import com.pocketclaw.agent.tool.ToolResult
+import com.pocketclaw.agent.skill.AgentSkill
+import com.pocketclaw.agent.skill.SkillResult
 import com.pocketclaw.agent.validator.ActionValidator
 import com.pocketclaw.agent.validator.ValidationResult
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
@@ -350,7 +350,7 @@ class AgentOrchestrator @Inject constructor(
                     }
                     is ParsedLlmOutput.ToolCall -> {
                         // Tool call execution handled by tool registry.
-                        // CapabilityEnforcer is invoked via enforceAndExecuteTool()
+                        // CapabilityEnforcer is invoked via enforceAndExecuteSkill()
                         // before any tool.execute() call — this chain is uncircumventable.
                         conversationHistory.add(
                             Message(
@@ -427,22 +427,22 @@ class AgentOrchestrator @Inject constructor(
     }
 
     /**
-     * Dispatches a tool call through the mandatory ActionValidator → CapabilityEnforcer
-     * security chain before invoking [AgentTool.execute].
+     * Dispatches a skill call through the mandatory ActionValidator → CapabilityEnforcer
+     * security chain before invoking [AgentSkill.execute].
      *
-     * This method is the ONLY authorised entry point for tool execution.
+     * This method is the ONLY authorised entry point for skill execution.
      * It is uncircumventable: any exception in either check aborts execution.
      *
-     * @throws [com.pocketclaw.agent.capability.CapabilityViolationException] if the tool
+     * @throws [com.pocketclaw.agent.capability.CapabilityViolationException] if the skill
      *   has not declared the capability required by [requestedCapability].
      */
-    suspend fun enforceAndExecuteTool(
-        tool: AgentTool,
+    suspend fun enforceAndExecuteSkill(
+        skill: AgentSkill,
         requestedCapability: com.pocketclaw.agent.capability.Capability,
         parameters: Map<String, Any>,
-    ): ToolResult {
-        capabilityEnforcer.enforce(tool, requestedCapability)
-        return tool.execute(parameters)
+    ): SkillResult {
+        capabilityEnforcer.enforce(skill, requestedCapability)
+        return skill.execute(parameters)
     }
 
     private fun sha256(input: String): String {

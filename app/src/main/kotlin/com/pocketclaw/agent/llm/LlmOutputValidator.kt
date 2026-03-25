@@ -7,7 +7,7 @@ import com.pocketclaw.agent.llm.schema.LlmOutputType
 import com.pocketclaw.agent.llm.schema.LlmToolCall
 import com.pocketclaw.agent.llm.schema.LlmValidationError
 import com.pocketclaw.agent.llm.schema.ParsedLlmOutput
-import com.pocketclaw.agent.tool.AgentTool
+import com.pocketclaw.agent.skill.AgentSkill
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -21,7 +21,7 @@ import javax.inject.Inject
  * 2. "type" unknown → [LlmValidationError.UnknownType]
  * 3. Missing "reasoning" → [LlmValidationError.MissingReasoning]
  * 4. "reasoning" > 200 chars → [LlmValidationError.ReasoningTooLong]
- * 5. "tool_id" not in registry → [LlmValidationError.UnknownTool]
+ * 5. "skill_id" not in registry → [LlmValidationError.UnknownSkill]
  *
  * On any error: the orchestrator retries the LLM call (max 3 times), then escalates to HITL.
  */
@@ -32,10 +32,10 @@ class LlmOutputValidator @Inject constructor(
         private const val MAX_REASONING_LENGTH = 200
     }
 
-    private val registeredTools = mutableMapOf<String, AgentTool>()
+    private val registeredSkills = mutableMapOf<String, AgentSkill>()
 
-    fun registerTool(tool: AgentTool) {
-        registeredTools[tool.toolId] = tool
+    fun registerSkill(skill: AgentSkill) {
+        registeredSkills[skill.skillId] = skill
     }
 
     fun validate(rawContent: String): Result<ParsedLlmOutput> {
@@ -94,8 +94,8 @@ class LlmOutputValidator @Inject constructor(
             validateReasoning(toolCall.reasoning, LlmOutputType.TOOL_CALL)?.let {
                 return Result.failure(toException(it))
             }
-            if (toolCall.toolId !in registeredTools) {
-                return Result.failure(toException(LlmValidationError.UnknownTool(toolCall.toolId)))
+            if (toolCall.skillId !in registeredSkills) {
+                return Result.failure(toException(LlmValidationError.UnknownSkill(toolCall.skillId)))
             }
             Result.success(ParsedLlmOutput.ToolCall(toolCall))
         } catch (e: Exception) {

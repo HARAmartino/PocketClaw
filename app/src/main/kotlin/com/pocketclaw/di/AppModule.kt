@@ -25,7 +25,7 @@ import com.pocketclaw.agent.validator.ActionValidator
 import com.pocketclaw.agent.validator.ActionValidatorImpl
 import com.pocketclaw.core.data.db.PocketClawDatabase
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
-import com.pocketclaw.core.data.db.dao.PluginTrustStoreDao
+import com.pocketclaw.core.data.db.dao.SkillTrustStoreDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
 import com.pocketclaw.core.data.db.dao.TimelineEntryDao
 import com.pocketclaw.core.data.db.dao.WhitelistStoreDao
@@ -119,6 +119,21 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migration from schema version 3 to 4.
+     *
+     * Renames the plugin trust store table to `skill_trust_store` to align with
+     * the Terminology Unification (Phase 6 Part A). The table structure is unchanged;
+     * only the name is updated.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "ALTER TABLE plugin_trust_store RENAME TO skill_trust_store",
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun providePocketClawDatabase(
@@ -128,7 +143,7 @@ object DatabaseModule {
         PocketClawDatabase::class.java,
         "pocketclaw.db",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
 
     @Provides
@@ -144,7 +159,7 @@ object DatabaseModule {
     fun provideWhitelistStoreDao(db: PocketClawDatabase): WhitelistStoreDao = db.whitelistStoreDao()
 
     @Provides
-    fun providePluginTrustStoreDao(db: PocketClawDatabase): PluginTrustStoreDao = db.pluginTrustStoreDao()
+    fun provideSkillTrustStoreDao(db: PocketClawDatabase): SkillTrustStoreDao = db.skillTrustStoreDao()
 }
 
 private val Context.prefDataStore: DataStore<Preferences> by preferencesDataStore(

@@ -44,6 +44,16 @@ class SecretStoreTest {
             store.remove("webhook_url_$providerId")
         }
 
+        override fun saveOAuthToken(providerId: String, token: String) {
+            store["oauth_token_$providerId"] = token
+        }
+
+        override fun getOAuthToken(providerId: String): String? = store["oauth_token_$providerId"]
+
+        override fun deleteOAuthToken(providerId: String) {
+            store.remove("oauth_token_$providerId")
+        }
+
         override fun clearAll() {
             store.clear()
         }
@@ -130,5 +140,40 @@ class SecretStoreTest {
         assertNull(store.getApiKey("openai"))
         assertNull(store.getBotToken("telegram"))
         assertNull(store.getWebhookUrl("discord"))
+    }
+
+    // ── OAuth token tests ────────────────────────────────────────────────────
+
+    @Test
+    fun saveAndGetOAuthToken_roundTrips() {
+        store.saveOAuthToken("gmail", "ya29.accesstoken")
+        assertEquals("ya29.accesstoken", store.getOAuthToken("gmail"))
+    }
+
+    @Test
+    fun deleteOAuthToken_returnsNull() {
+        store.saveOAuthToken("gmail", "ya29.accesstoken")
+        store.deleteOAuthToken("gmail")
+        assertNull(store.getOAuthToken("gmail"))
+    }
+
+    @Test
+    fun getOAuthToken_unknownProvider_returnsNull() {
+        assertNull(store.getOAuthToken("nonexistent"))
+    }
+
+    @Test
+    fun oauthToken_doesNotConflictWithApiKey_sameProviderId() {
+        store.saveApiKey("gmail", "api-key-value")
+        store.saveOAuthToken("gmail", "oauth-token-value")
+        assertEquals("api-key-value", store.getApiKey("gmail"))
+        assertEquals("oauth-token-value", store.getOAuthToken("gmail"))
+    }
+
+    @Test
+    fun clearAll_removesOAuthTokens() {
+        store.saveOAuthToken("gmail", "ya29.accesstoken")
+        store.clearAll()
+        assertNull(store.getOAuthToken("gmail"))
     }
 }

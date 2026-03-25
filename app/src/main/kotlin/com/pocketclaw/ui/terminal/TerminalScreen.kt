@@ -32,15 +32,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.pocketclaw.R
 import com.pocketclaw.core.data.db.entity.TimelineEntry
 import com.pocketclaw.ui.dashboard.DashboardViewModel
@@ -48,6 +51,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.File
 
 // Terminal colour scheme (dark-terminal aesthetic)
 private val TerminalBackground = Color(0xFF1A1A2E)
@@ -209,15 +213,30 @@ private fun TimelineJsonStream(entries: List<TimelineEntry>) {
 @Composable
 private fun TimelineEntryJson(entry: TimelineEntry) {
     val json = remember(entry.id) { encodeEntryToJson(entry) }
-    Text(
-        text = json,
-        color = TerminalText,
-        fontFamily = FontFamily.Monospace,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(2.dp))
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = json,
+            color = TerminalText,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Show screenshot thumbnail if a path is recorded for this step.
+        val screenshotPath = entry.screenshotPath
+        if (!screenshotPath.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            AsyncImage(
+                model = File(screenshotPath),
+                contentDescription = "Screenshot for step ${entry.stepIndex}",
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(135.dp),
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+    }
 }
 
 private fun encodeEntryToJson(entry: TimelineEntry): String {

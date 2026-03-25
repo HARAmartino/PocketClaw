@@ -18,4 +18,7 @@ interface SkillTrustStoreDao {
 
     @Query("SELECT * FROM skill_trust_store WHERE isTrusted = 1")
     fun observeTrusted(): Flow<List<SkillTrustEntry>>
+
+    @Query("SELECT * FROM skill_trust_store WHERE isTrusted = 0")
+    suspend fun getAllUnapproved(): List<SkillTrustEntry>
 }

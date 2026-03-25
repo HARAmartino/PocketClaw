@@ -44,6 +44,9 @@ class TelegramApprovalProviderTest {
         override fun saveWebhookUrl(providerId: String, url: String) = Unit
         override fun getWebhookUrl(providerId: String): String? = null
         override fun deleteWebhookUrl(providerId: String) = Unit
+        override fun saveOAuthToken(providerId: String, token: String) = Unit
+        override fun getOAuthToken(providerId: String): String? = null
+        override fun deleteOAuthToken(providerId: String) = Unit
         override fun clearAll() = Unit
     }
 

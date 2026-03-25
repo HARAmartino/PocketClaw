@@ -61,6 +61,9 @@ class SettingsViewModelTest {
         }
         override fun getWebhookUrl(providerId: String): String? = data["webhook_url_$providerId"]
         override fun deleteWebhookUrl(providerId: String) { data.remove("webhook_url_$providerId") }
+        override fun saveOAuthToken(providerId: String, token: String) { data["oauth_token_$providerId"] = token }
+        override fun getOAuthToken(providerId: String): String? = data["oauth_token_$providerId"]
+        override fun deleteOAuthToken(providerId: String) { data.remove("oauth_token_$providerId") }
         override fun clearAll() { data.clear() }
     }
 

@@ -310,10 +310,19 @@ class DashboardViewModel @Inject constructor(
     fun injectCommand() {
         val cmd = _pendingCommand.value.trim()
         if (cmd.isEmpty()) return
-        // In a future phase the command is handed to AgentOrchestrator.runTask()
-        // for the next iteration. For now, the state is cleared and the command
-        // is available for the calling composable to act on.
         _pendingCommand.value = ""
+        viewModelScope.launch {
+            orchestrator.resetScope()   // ensure scope is live before launching
+            orchestrator.runTask(
+                title = "Terminal: ${cmd.take(40)}",
+                taskType = com.pocketclaw.core.data.db.entity.TaskType.USER,
+                goalPrompt = cmd,
+                systemPrompt = "You are PocketClaw, an autonomous Android AI agent. " +
+                    "The user has injected this command directly from the advanced terminal. " +
+                    "ActionValidator still applies. " +
+                    "SuspicionScorer is intentionally bypassed for terminal input.",
+            )
+        }
     }
 
     fun updateCompressedDom(dom: String) {

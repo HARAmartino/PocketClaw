@@ -14,6 +14,7 @@ import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -44,6 +45,9 @@ class AgentForegroundService : Service() {
 
         const val ACTION_START = "com.pocketclaw.ACTION_START"
         const val ACTION_STOP = "com.pocketclaw.ACTION_STOP"
+        const val ACTION_MEDIA_PROJECTION_GRANTED = "com.pocketclaw.ACTION_MEDIA_PROJECTION_GRANTED"
+        const val EXTRA_MEDIA_PROJECTION_RESULT_CODE = "extra_result_code"
+        const val EXTRA_MEDIA_PROJECTION_DATA = "extra_projection_data"
 
         private const val TEMP_PAUSE_THRESHOLD_CELSIUS_TENTHS = 450 // 45.0°C * 10
         private const val BATTERY_PAUSE_THRESHOLD_PERCENT = 20
@@ -129,6 +133,20 @@ class AgentForegroundService : Service() {
             ACTION_STOP -> {
                 releaseWakeLock()
                 stopSelf()
+            }
+            ACTION_MEDIA_PROJECTION_GRANTED -> {
+                val resultCode = intent.getIntExtra(EXTRA_MEDIA_PROJECTION_RESULT_CODE, -1)
+                val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_MEDIA_PROJECTION_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_MEDIA_PROJECTION_DATA)
+                }
+                if (resultCode != -1 && data != null) {
+                    val projectionManager =
+                        getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                    initMediaProjection(projectionManager.getMediaProjection(resultCode, data))
+                }
             }
         }
         return START_STICKY

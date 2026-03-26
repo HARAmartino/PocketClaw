@@ -1,6 +1,11 @@
 package com.pocketclaw.agent.orchestrator
 
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import com.pocketclaw.agent.accessibility.ActionResult
 import com.pocketclaw.agent.capability.CapabilityEnforcer
 import com.pocketclaw.agent.hitl.ApprovalContext
 import com.pocketclaw.agent.hitl.ApprovalResult
@@ -30,8 +35,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
@@ -60,6 +70,8 @@ class AgentOrchestrator @Inject constructor(
     private val serviceState: AgentServiceState,
     private val schedulerManager: SchedulerManager,
     private val heartbeatManager: HeartbeatManager,
+    private val dataStore: DataStore<Preferences>,
+    private val json: Json,
 ) {
     companion object {
         private const val TAG = "AgentOrchestrator"
@@ -72,11 +84,38 @@ class AgentOrchestrator @Inject constructor(
     }
 
     /** Root scope. Kill Switch calls [killSwitch] to cancel everything. */
-    val rootScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Volatile private var _rootScope: CoroutineScope = newScope()
+    val rootScope: CoroutineScope get() = _rootScope
+
+    private fun newScope() = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     var maxIterationsPerTask: Int = DEFAULT_MAX_ITERATIONS
     var dailyTokenBudget: Long = DAILY_TOKEN_BUDGET_DEFAULT
     var isAutoPilotEnabled: Boolean = false
+
+    private val skillRegistry = mutableMapOf<String, AgentSkill>()
+
+    fun registerSkill(skill: AgentSkill) {
+        skillRegistry[skill.skillId] = skill
+        llmOutputValidator.registerTool(skill)
+    }
+
+    init {
+        observeSettings()
+    }
+
+    private fun observeSettings() {
+        rootScope.launch {
+            dataStore.data.collect { prefs ->
+                dailyTokenBudget = (prefs[intPreferencesKey("daily_token_budget")]
+                    ?: DAILY_TOKEN_BUDGET_DEFAULT).toLong()
+                maxIterationsPerTask = prefs[intPreferencesKey("max_iterations")]
+                    ?: DEFAULT_MAX_ITERATIONS
+                isAutoPilotEnabled = prefs[booleanPreferencesKey("auto_pilot_enabled")]
+                    ?: false
+            }
+        }
+    }
 
     /**
      * Set when a hard-deny app enters the foreground.
@@ -90,7 +129,21 @@ class AgentOrchestrator @Inject constructor(
      */
     fun killSwitch() {
         Log.w(TAG, "KILL_SWITCH_ACTIVATED: Cancelling root scope.")
-        rootScope.cancel("Kill Switch activated by user.")
+        _rootScope.cancel("Kill Switch activated by user.")
+    }
+
+    /**
+     * Creates a fresh scope and re-subscribes settings.
+     * Must be called before starting a new agent session after kill or pause.
+     */
+    fun resetScope() {
+        if (!_rootScope.isActive) {
+            _rootScope = newScope()
+            observeSettings()
+            Log.i(TAG, "Root scope reset — agent ready to restart.")
+        } else {
+            Log.d(TAG, "resetScope() called but scope is still active — no action taken.")
+        }
     }
 
     /**
@@ -303,7 +356,9 @@ class AgentOrchestrator @Inject constructor(
                 }
 
                 // Loop detection
-                val stateHash = sha256("${llmResponse.rawContent}:$iteration")
+                val currentDom = serviceState.accessibilityExecutor.value
+                    ?.captureCurrentScreen()?.content ?: ""
+                val stateHash = sha256("${llmResponse.rawContent}:$currentDom")
                 recentHashes.addLast(stateHash)
                 if (recentHashes.size > LOOP_WINDOW_SIZE) recentHashes.removeFirst()
                 val hashCount = recentHashes.count { it == stateHash }
@@ -340,22 +395,79 @@ class AgentOrchestrator @Inject constructor(
                             }
                             is ValidationResult.Allow -> { /* proceed */ }
                         }
-                        // Accessibility action execution handled by service layer
+                        val executor = serviceState.accessibilityExecutor.value ?: run {
+                            Log.w(TAG, "[$taskId] AccessibilityService not connected.")
+                            taskJournalDao.updateStatus(
+                                taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
+                            )
+                            return@withContext
+                        }
+
+                        val actionResult = executor.executeAction(parsed.action)
+
+                        val feedbackMessage = when (actionResult) {
+                            is ActionResult.Success -> {
+                                val newDom = executor.captureCurrentScreen()
+                                buildString {
+                                    append("Action ${parsed.action.actionType} executed successfully.")
+                                    newDom?.let { append("\n\nCurrent screen:\n${it.content}") }
+                                }
+                            }
+                            is ActionResult.NodeNotFound ->
+                                "Node '${actionResult.nodeId}' not found. Re-examine the screen and retry."
+                            is ActionResult.ExecutionFailed ->
+                                "Action failed: ${actionResult.reason}. Consider an alternative approach."
+                        }
+
                         conversationHistory.add(
                             Message(
                                 role = com.pocketclaw.agent.llm.schema.MessageRole.USER,
-                                content = "Action executed: ${parsed.action.actionType}",
+                                content = feedbackMessage,
                             ),
                         )
                     }
                     is ParsedLlmOutput.ToolCall -> {
-                        // Tool call execution handled by tool registry.
-                        // CapabilityEnforcer is invoked via enforceAndExecuteSkill()
-                        // before any tool.execute() call — this chain is uncircumventable.
+                        val skill = skillRegistry[parsed.toolCall.toolId] ?: run {
+                            Log.w(TAG, "[$taskId] Unknown skill '${parsed.toolCall.toolId}'.")
+                            taskJournalDao.updateStatus(
+                                taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
+                            )
+                            return@withContext
+                        }
+
+                        val params = try {
+                            json.decodeFromJsonElement<Map<String, JsonElement>>(parsed.toolCall.parameters)
+                                .mapValues { it.value.toString() }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "[$taskId] Failed to decode tool call parameters: ${e.message}")
+                            emptyMap()
+                        }
+
+                        val cap = skill.manifest.requiredCapabilities.firstOrNull() ?: run {
+                            Log.w(TAG, "[$taskId] Skill '${parsed.toolCall.toolId}' has no declared capabilities.")
+                            taskJournalDao.updateStatus(
+                                taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
+                            )
+                            return@withContext
+                        }
+
+                        val skillResult = enforceAndExecuteSkill(
+                            skill = skill,
+                            requestedCapability = cap,
+                            parameters = params,
+                        )
+
+                        val feedbackMessage = when (skillResult) {
+                            is SkillResult.Success ->
+                                "Tool '${parsed.toolCall.toolId}' result: ${skillResult.output}"
+                            is SkillResult.Failure ->
+                                "Tool '${parsed.toolCall.toolId}' failed: ${skillResult.error}"
+                        }
+
                         conversationHistory.add(
                             Message(
                                 role = com.pocketclaw.agent.llm.schema.MessageRole.USER,
-                                content = "Tool result received.",
+                                content = feedbackMessage,
                             ),
                         )
                     }

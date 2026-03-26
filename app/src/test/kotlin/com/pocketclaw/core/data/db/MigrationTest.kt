@@ -3,6 +3,7 @@ package com.pocketclaw.core.data.db
 import com.pocketclaw.di.DatabaseModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -72,5 +73,43 @@ class MigrationTest {
     @Test
     fun database_currentVersionIs4() {
         assertEquals(4, DatabaseModule.MIGRATION_3_4.endVersion)
+    }
+
+    // ── 4 → 5 ─────────────────────────────────────────────────────────────────
+
+    @Test
+    fun migration_4_5_startVersionIs4() {
+        assertEquals(4, DatabaseModule.MIGRATION_4_5.startVersion)
+    }
+
+    @Test
+    fun migration_4_5_endVersionIs5() {
+        assertEquals(5, DatabaseModule.MIGRATION_4_5.endVersion)
+    }
+
+    @Test
+    fun migration_4_5_objectIsNotNull() {
+        assertNotNull(DatabaseModule.MIGRATION_4_5)
+    }
+
+    @Test
+    fun database_currentVersionIs5() {
+        assertEquals(5, DatabaseModule.MIGRATION_4_5.endVersion)
+    }
+
+    // ── Whitelist seed test ────────────────────────────────────────────────────
+
+    @Test
+    fun builtinWhitelistDomains_areDefinedInAppModule() {
+        // Verify the seed list is non-empty and contains the minimum required domains
+        val requiredDomains = listOf(
+            "api.openai.com",
+            "api.anthropic.com",
+            "api.telegram.org",
+        )
+        // This is a documentation test — actual DB seeding is verified via
+        // instrumented test. Here we verify the constant list exists in source.
+        assertTrue(DatabaseModule.BUILTIN_WHITELIST_DOMAINS.isNotEmpty())
+        assertTrue(DatabaseModule.BUILTIN_WHITELIST_DOMAINS.containsAll(requiredDomains))
     }
 }

@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pocketclaw.agent.capability.CapabilityEnforcer
@@ -30,6 +31,7 @@ import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.SkillTrustStoreDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
 import com.pocketclaw.core.data.db.dao.TimelineEntryDao
+import com.pocketclaw.core.data.db.dao.TriggerDao
 import com.pocketclaw.core.data.db.dao.WhitelistStoreDao
 import com.pocketclaw.core.data.secret.SecretStore
 import com.pocketclaw.core.data.secret.SecretStoreImpl
@@ -46,6 +48,9 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -96,6 +101,16 @@ abstract class AppModule {
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    /** Built-in whitelist domains seeded on fresh install. */
+    val BUILTIN_WHITELIST_DOMAINS = listOf(
+        "api.openai.com",
+        "api.anthropic.com",
+        "api.telegram.org",
+        "gmail.googleapis.com",
+        "oauth2.googleapis.com",
+        "discord.com",
+    )
+
     /**
      * Placeholder migration from schema version 1 to 2.
      *
@@ -140,6 +155,31 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migration from schema version 4 to 5.
+     *
+     * Adds the [com.pocketclaw.core.data.db.entity.TriggerEntry] table
+     * (`trigger_store`) to persist scheduled task trigger configurations in
+     * Room rather than DataStore.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `trigger_store` (
+                    `id` TEXT NOT NULL,
+                    `taskType` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `goalPrompt` TEXT NOT NULL,
+                    `scheduleIntervalMs` INTEGER,
+                    `createdAtMs` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun providePocketClawDatabase(
@@ -149,7 +189,20 @@ object DatabaseModule {
         PocketClawDatabase::class.java,
         "pocketclaw.db",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .addCallback(object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                BUILTIN_WHITELIST_DOMAINS.forEach { domain ->
+                    db.execSQL(
+                        "INSERT OR IGNORE INTO whitelist_store " +
+                            "(domain, addedAtMs, addedBy, note) " +
+                            "VALUES (?, ?, 'BUILTIN', 'Default seed')",
+                        arrayOf(domain, now),
+                    )
+                }
+            }
+        })
         .build()
 
     @Provides
@@ -166,6 +219,9 @@ object DatabaseModule {
 
     @Provides
     fun provideSkillTrustStoreDao(db: PocketClawDatabase): SkillTrustStoreDao = db.skillTrustStoreDao()
+
+    @Provides
+    fun provideTriggerDao(db: PocketClawDatabase): TriggerDao = db.triggerDao()
 }
 
 private val Context.prefDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -186,6 +242,12 @@ object DataStoreModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Provides
     @Singleton

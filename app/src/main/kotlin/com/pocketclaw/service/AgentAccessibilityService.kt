@@ -10,8 +10,10 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.pocketclaw.agent.accessibility.AccessibilityTreeCompressor
+import com.pocketclaw.agent.accessibility.AccessibilityExecutor
 import com.pocketclaw.agent.accessibility.ActionResult
 import com.pocketclaw.agent.llm.schema.AccessibilityActionType
+import com.pocketclaw.agent.llm.schema.CompressedDomTree
 import com.pocketclaw.agent.llm.schema.LlmAction
 import com.pocketclaw.agent.llm.schema.NodeBounds
 import com.pocketclaw.agent.orchestrator.AgentOrchestrator
@@ -39,7 +41,7 @@ import javax.inject.Inject
  * - Accessibility actions are always dispatched on [Dispatchers.Main].
  */
 @AndroidEntryPoint
-class AgentAccessibilityService : AccessibilityService() {
+class AgentAccessibilityService : AccessibilityService(), AccessibilityExecutor {
 
     companion object {
         private const val TAG = "AgentA11yService"
@@ -59,6 +61,7 @@ class AgentAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        serviceState.setAccessibilityExecutor(this)
         serviceInfo = serviceInfo.apply {
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
@@ -91,6 +94,7 @@ class AgentAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceState.setAccessibilityExecutor(null)
         serviceScope.cancel()
         Log.i(TAG, "AccessibilityService destroyed.")
     }
@@ -99,14 +103,9 @@ class AgentAccessibilityService : AccessibilityService() {
      * Captures and compresses the current accessibility tree.
      * Called by [AgentOrchestrator] before each LLM call.
      */
-    fun captureCurrentScreen(
-        onResult: (com.pocketclaw.agent.llm.schema.CompressedDomTree) -> Unit,
-    ) {
-        val root = rootInActiveWindow ?: return
-        serviceScope.launch {
-            val compressed = treeCompressor.compress(root)
-            onResult(compressed)
-        }
+    override suspend fun captureCurrentScreen(): CompressedDomTree? {
+        val root = rootInActiveWindow ?: return null
+        return treeCompressor.compress(root)
     }
 
     /** Disables the service — called by the Kill Switch. */
@@ -131,7 +130,7 @@ class AgentAccessibilityService : AccessibilityService() {
      *
      * @return [ActionResult.Success], [ActionResult.NodeNotFound], or [ActionResult.ExecutionFailed].
      */
-    suspend fun executeAction(action: LlmAction): ActionResult = withContext(Dispatchers.Main) {
+    override suspend fun executeAction(action: LlmAction): ActionResult = withContext(Dispatchers.Main) {
         try {
             when (action.actionType) {
                 AccessibilityActionType.PRESS_BACK -> {

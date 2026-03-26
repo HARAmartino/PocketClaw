@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pocketclaw.agent.orchestrator.AgentOrchestrator
 import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
@@ -83,6 +84,7 @@ class DashboardViewModel @Inject constructor(
     val serviceState: AgentServiceState,
     private val llmProvider: LlmProvider,
     private val dataStore: DataStore<Preferences>,
+    private val orchestrator: AgentOrchestrator,
 ) : ViewModel() {
 
     companion object {
@@ -253,6 +255,7 @@ class DashboardViewModel @Inject constructor(
     // ── Public API ────────────────────────────────────────────────────────────
 
     fun startAgent(context: Context) {
+        orchestrator.resetScope()
         serviceState.setRunning(true)
         context.startForegroundService(
             Intent(context, AgentForegroundService::class.java).apply {

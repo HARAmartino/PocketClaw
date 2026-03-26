@@ -1,5 +1,6 @@
 package com.pocketclaw.service
 
+import com.pocketclaw.agent.accessibility.AccessibilityExecutor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,5 +81,13 @@ class AgentServiceState @Inject constructor() {
 
     fun setForegroundPackage(packageName: String?) {
         _foregroundPackage.value = packageName
+    }
+
+    private val _accessibilityExecutor = MutableStateFlow<AccessibilityExecutor?>(null)
+    val accessibilityExecutor: StateFlow<AccessibilityExecutor?> =
+        _accessibilityExecutor.asStateFlow()
+
+    fun setAccessibilityExecutor(executor: AccessibilityExecutor?) {
+        _accessibilityExecutor.value = executor
     }
 }

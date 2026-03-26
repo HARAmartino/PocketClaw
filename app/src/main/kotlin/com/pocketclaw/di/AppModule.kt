@@ -31,6 +31,7 @@ import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.SkillTrustStoreDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
 import com.pocketclaw.core.data.db.dao.TimelineEntryDao
+import com.pocketclaw.core.data.db.dao.TriggerDao
 import com.pocketclaw.core.data.db.dao.WhitelistStoreDao
 import com.pocketclaw.core.data.secret.SecretStore
 import com.pocketclaw.core.data.secret.SecretStoreImpl
@@ -154,6 +155,31 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migration from schema version 4 to 5.
+     *
+     * Adds the [com.pocketclaw.core.data.db.entity.TriggerEntry] table
+     * (`trigger_store`) to persist scheduled task trigger configurations in
+     * Room rather than DataStore.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `trigger_store` (
+                    `id` TEXT NOT NULL,
+                    `taskType` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `goalPrompt` TEXT NOT NULL,
+                    `scheduleIntervalMs` INTEGER,
+                    `createdAtMs` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun providePocketClawDatabase(
@@ -163,7 +189,7 @@ object DatabaseModule {
         PocketClawDatabase::class.java,
         "pocketclaw.db",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .addCallback(object : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 val now = System.currentTimeMillis()
@@ -193,6 +219,9 @@ object DatabaseModule {
 
     @Provides
     fun provideSkillTrustStoreDao(db: PocketClawDatabase): SkillTrustStoreDao = db.skillTrustStoreDao()
+
+    @Provides
+    fun provideTriggerDao(db: PocketClawDatabase): TriggerDao = db.triggerDao()
 }
 
 private val Context.prefDataStore: DataStore<Preferences> by preferencesDataStore(

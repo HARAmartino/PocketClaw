@@ -75,6 +75,28 @@ class MigrationTest {
         assertEquals(4, DatabaseModule.MIGRATION_3_4.endVersion)
     }
 
+    // ── 4 → 5 ─────────────────────────────────────────────────────────────────
+
+    @Test
+    fun migration_4_5_startVersionIs4() {
+        assertEquals(4, DatabaseModule.MIGRATION_4_5.startVersion)
+    }
+
+    @Test
+    fun migration_4_5_endVersionIs5() {
+        assertEquals(5, DatabaseModule.MIGRATION_4_5.endVersion)
+    }
+
+    @Test
+    fun migration_4_5_objectIsNotNull() {
+        assertNotNull(DatabaseModule.MIGRATION_4_5)
+    }
+
+    @Test
+    fun database_currentVersionIs5() {
+        assertEquals(5, DatabaseModule.MIGRATION_4_5.endVersion)
+    }
+
     // ── Whitelist seed test ────────────────────────────────────────────────────
 
     @Test

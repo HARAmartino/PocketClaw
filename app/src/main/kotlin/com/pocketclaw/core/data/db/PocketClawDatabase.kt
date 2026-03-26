@@ -7,11 +7,13 @@ import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.SkillTrustStoreDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
 import com.pocketclaw.core.data.db.dao.TimelineEntryDao
+import com.pocketclaw.core.data.db.dao.TriggerDao
 import com.pocketclaw.core.data.db.dao.WhitelistStoreDao
 import com.pocketclaw.core.data.db.entity.CostLedgerEntry
 import com.pocketclaw.core.data.db.entity.SkillTrustEntry
 import com.pocketclaw.core.data.db.entity.TaskJournalEntry
 import com.pocketclaw.core.data.db.entity.TimelineEntry
+import com.pocketclaw.core.data.db.entity.TriggerEntry
 import com.pocketclaw.core.data.db.entity.WhitelistEntry
 
 @Database(
@@ -21,8 +23,9 @@ import com.pocketclaw.core.data.db.entity.WhitelistEntry
         CostLedgerEntry::class,
         WhitelistEntry::class,
         SkillTrustEntry::class,
+        TriggerEntry::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -32,4 +35,5 @@ abstract class PocketClawDatabase : RoomDatabase() {
     abstract fun costLedgerDao(): CostLedgerDao
     abstract fun whitelistStoreDao(): WhitelistStoreDao
     abstract fun skillTrustStoreDao(): SkillTrustStoreDao
+    abstract fun triggerDao(): TriggerDao
 }

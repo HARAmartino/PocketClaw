@@ -105,7 +105,15 @@ class AgentAccessibilityService : AccessibilityService(), AccessibilityExecutor 
      */
     override suspend fun captureCurrentScreen(): CompressedDomTree? {
         val root = rootInActiveWindow ?: return null
-        return treeCompressor.compress(root)
+        return try {
+            treeCompressor.compress(root)
+        } catch (e: Exception) {
+            Log.w(TAG, "captureCurrentScreen: tree compression failed — ${e.message}")
+            null
+        }
+        // Do NOT call root.recycle() here.
+        // AccessibilityTreeCompressor.compress() recycles all nodes internally
+        // via try-finally blocks — double-recycling would corrupt the node pool.
     }
 
     /** Disables the service — called by the Kill Switch. */

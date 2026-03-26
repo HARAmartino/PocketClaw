@@ -50,6 +50,7 @@ import com.pocketclaw.R
 @Composable
 fun PermissionOnboardingScreen(
     onAllPermissionsGranted: () -> Unit,
+    onRequestMediaProjection: () -> Unit = {},
     viewModel: PermissionOnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.permissionState.collectAsStateWithLifecycle()
@@ -112,10 +113,7 @@ fun PermissionOnboardingScreen(
             PermissionRow(
                 label = stringResource(R.string.permission_media_projection_label),
                 isGranted = state.mediaProjectionGranted,
-                onGrant = {
-                    // MediaProjection permission is requested at runtime via Activity result
-                    viewModel.requestMediaProjection()
-                },
+                onGrant = onRequestMediaProjection,
             )
 
             PermissionRow(

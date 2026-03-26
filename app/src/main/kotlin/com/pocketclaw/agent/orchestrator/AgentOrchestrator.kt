@@ -38,7 +38,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -273,7 +272,8 @@ class AgentOrchestrator @Inject constructor(
         goalPrompt: String,
         conversationHistory: MutableList<Message> = mutableListOf(),
         systemPrompt: String,
-    ) = withContext(rootScope.coroutineContext) {
+    ) {
+        rootScope.launch {
         val taskId = UUID.randomUUID().toString()
         val nowMs = System.currentTimeMillis()
 
@@ -309,7 +309,7 @@ class AgentOrchestrator @Inject constructor(
                 if (hardDenyPackage != null) {
                     Log.w(TAG, "[$taskId] Aborting: hard-deny app '${hardDenyPackage}' in foreground.")
                     taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
-                    return@withContext
+                    return@launch
                 }
 
                 // Check daily token budget
@@ -322,7 +322,7 @@ class AgentOrchestrator @Inject constructor(
                     remoteApprovalProvider.sendNotification(
                         "PocketClaw: Daily token budget exhausted. Task '$title' paused.",
                     )
-                    return@withContext
+                    return@launch
                 }
 
                 // LLM call with retry
@@ -332,7 +332,7 @@ class AgentOrchestrator @Inject constructor(
                     config = LlmConfig(systemPrompt = systemPrompt),
                 ) ?: run {
                     taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
-                    return@withContext
+                    return@launch
                 }
 
                 // Record cost
@@ -352,7 +352,7 @@ class AgentOrchestrator @Inject constructor(
                 val parsed = llmOutputValidator.validate(llmResponse.rawContent).getOrElse { err ->
                     Log.w(TAG, "[$taskId] LLM output validation failed: $err. Escalating to HITL.")
                     requestHitlAndHandle(taskId, title, iteration, "LLM schema violation: $err", RiskLevel.HIGH)
-                    return@withContext
+                    return@launch
                 }
 
                 // Loop detection
@@ -367,14 +367,14 @@ class AgentOrchestrator @Inject constructor(
                     serviceState.setLoopDetected(true)
                     taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
                     requestHitlAndHandle(taskId, title, iteration, "Loop detected", RiskLevel.HIGH)
-                    return@withContext
+                    return@launch
                 }
 
                 // Dispatch parsed output
                 when (parsed) {
                     is ParsedLlmOutput.HitlEscalation -> {
                         requestHitlAndHandle(taskId, title, iteration, parsed.escalation.detail, RiskLevel.HIGH)
-                        return@withContext
+                        return@launch
                     }
                     is ParsedLlmOutput.Action -> {
                         val pendingAction = com.pocketclaw.agent.validator.PendingAction(
@@ -385,12 +385,12 @@ class AgentOrchestrator @Inject constructor(
                             is ValidationResult.HardDeny -> {
                                 Log.w(TAG, "[$taskId] Hard deny: ${result.reason}")
                                 taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
-                                return@withContext
+                                return@launch
                             }
                             is ValidationResult.SoftDeny -> {
                                 if (!isAutoPilotEnabled || result.requiresHitl) {
                                     requestHitlAndHandle(taskId, title, iteration, result.reason, RiskLevel.MEDIUM)
-                                    return@withContext
+                                    return@launch
                                 }
                             }
                             is ValidationResult.Allow -> { /* proceed */ }
@@ -400,7 +400,7 @@ class AgentOrchestrator @Inject constructor(
                             taskJournalDao.updateStatus(
                                 taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
                             )
-                            return@withContext
+                            return@launch
                         }
 
                         val actionResult = executor.executeAction(parsed.action)
@@ -432,7 +432,7 @@ class AgentOrchestrator @Inject constructor(
                             taskJournalDao.updateStatus(
                                 taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
                             )
-                            return@withContext
+                            return@launch
                         }
 
                         val params = try {
@@ -448,7 +448,7 @@ class AgentOrchestrator @Inject constructor(
                             taskJournalDao.updateStatus(
                                 taskId, TaskStatus.FAILED.name, System.currentTimeMillis()
                             )
-                            return@withContext
+                            return@launch
                         }
 
                         val skillResult = enforceAndExecuteSkill(
@@ -481,6 +481,7 @@ class AgentOrchestrator @Inject constructor(
             Log.e(TAG, "[$taskId] Task failed with exception: ${e.message}", e)
             taskJournalDao.updateStatus(taskId, TaskStatus.FAILED.name, System.currentTimeMillis())
         }
+        }.join()
     }
 
     private suspend fun callLlmWithRetry(

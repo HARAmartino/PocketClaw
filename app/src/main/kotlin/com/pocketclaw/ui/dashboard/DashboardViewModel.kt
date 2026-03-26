@@ -13,20 +13,24 @@ import com.pocketclaw.agent.llm.provider.LlmProvider
 import com.pocketclaw.core.data.db.dao.CostLedgerDao
 import com.pocketclaw.core.data.db.dao.TaskJournalDao
 import com.pocketclaw.core.data.db.dao.TimelineEntryDao
+import com.pocketclaw.core.data.db.dao.TriggerDao
 import com.pocketclaw.core.data.db.entity.TaskJournalEntry
 import com.pocketclaw.core.data.db.entity.TaskStatus
 import com.pocketclaw.core.data.db.entity.TaskType
 import com.pocketclaw.core.data.db.entity.TimelineEntry
+import com.pocketclaw.core.data.db.entity.TriggerEntry
 import com.pocketclaw.service.AgentForegroundService
 import com.pocketclaw.service.AgentServiceState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -85,6 +89,7 @@ class DashboardViewModel @Inject constructor(
     private val llmProvider: LlmProvider,
     private val dataStore: DataStore<Preferences>,
     private val orchestrator: AgentOrchestrator,
+    private val triggerDao: TriggerDao,
 ) : ViewModel() {
 
     companion object {
@@ -110,8 +115,19 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     // ── In-memory trigger list (future: persist to a Trigger Room entity) ─────
-    private val _triggers = MutableStateFlow<List<TriggerConfig>>(emptyList())
-    val triggers: StateFlow<List<TriggerConfig>> = _triggers.asStateFlow()
+    val triggers: StateFlow<List<TriggerConfig>> = triggerDao.observeAll()
+        .map { entries ->
+            entries.map { e ->
+                TriggerConfig(
+                    id = e.id,
+                    taskType = TaskType.valueOf(e.taskType),
+                    title = e.title,
+                    goalPrompt = e.goalPrompt,
+                    scheduleIntervalMs = e.scheduleIntervalMs,
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ── Terminal state ────────────────────────────────────────────────────────
     private val _compressedDom = MutableStateFlow("")
@@ -282,20 +298,29 @@ class DashboardViewModel @Inject constructor(
     // ── Trigger management ────────────────────────────────────────────────────
 
     fun addTrigger(trigger: TriggerConfig) {
-        _triggers.update { it + trigger }
+        viewModelScope.launch { triggerDao.upsert(trigger.toEntry()) }
     }
 
     fun updateTrigger(index: Int, trigger: TriggerConfig) {
-        _triggers.update { list ->
-            list.toMutableList().apply { this[index] = trigger }
-        }
+        // upsert by id — index is ignored; Room replaces by primary key
+        viewModelScope.launch { triggerDao.upsert(trigger.toEntry()) }
     }
 
     fun deleteTrigger(index: Int) {
-        _triggers.update { list ->
-            list.toMutableList().apply { removeAt(index) }
+        viewModelScope.launch {
+            val entry = triggers.value.getOrNull(index)?.toEntry() ?: return@launch
+            triggerDao.delete(entry)
         }
     }
+
+    private fun TriggerConfig.toEntry() = TriggerEntry(
+        id = id,
+        taskType = taskType.name,
+        title = title,
+        goalPrompt = goalPrompt,
+        scheduleIntervalMs = scheduleIntervalMs,
+        createdAtMs = System.currentTimeMillis(),
+    )
 
     // ── Terminal API ──────────────────────────────────────────────────────────
 
